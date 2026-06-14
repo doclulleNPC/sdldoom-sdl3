@@ -1,0 +1,19 @@
+# Build output
+doom.exe
+doomdbg.exe
+*.o
+*.obj
+
+# Bundled SDL3 runtime
+SDL3.dll
+
+# DOOM runtime files
+*.cfg
+.doomrc
+default.cfg
+DOOM*.pcx
+*.dsg
+
+# Misc
+build.log
+run.log
