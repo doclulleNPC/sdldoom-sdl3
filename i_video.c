@@ -186,6 +186,17 @@ void I_GetEvent(SDL_Event *Event)
 	D_PostEvent(&event);
 	break;
 
+      case SDL_EVENT_WINDOW_FOCUS_GAINED:
+	// Re-grab when we regain focus (e.g. after alt-tab).
+	if (grabMouse)
+	    SDL_SetWindowRelativeMouseMode(window, true);
+	break;
+
+      case SDL_EVENT_WINDOW_FOCUS_LOST:
+	// Let go of the mouse so the user can leave the window.
+	SDL_SetWindowRelativeMouseMode(window, false);
+	break;
+
       case SDL_EVENT_QUIT:
 	I_Quit();
     }
@@ -426,8 +437,11 @@ void I_InitGraphics(void)
 	return;
     firsttime = 0;
 
-    // check if the user wants to grab the mouse (quite unnice)
-    grabMouse = !!M_CheckParm("-grabmouse");
+    // Grab the mouse by default: relative-motion mode drives turning and keeps
+    // the cursor confined to the window (essential in windowed mode).  Focus
+    // changes release/re-grab it (see I_GetEvent) so alt-tab still works.
+    // -nograbmouse opts out.
+    grabMouse = !M_CheckParm("-nograbmouse");
 
     // screen_aspect / hires / fullscreen_mode come from the config file
     // (loaded by M_LoadDefaults before this runs).  Optional -aspect overrides.
