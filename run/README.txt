@@ -17,7 +17,17 @@ Internal resolution and aspect ratio:
     There you can set Resolution (320x200, 640x400, 960x600, 1280x800) and
     Aspect (4:3, 16:10, 16:9, Stretch).  Left/Right (or Enter) change a value.
     Changing the Resolution also resizes the window to match (capped to your
-    screen); Aspect sets the window shape.
+    screen); Aspect sets the window shape.  There is also a Fullscreen toggle.
+    These settings are saved and restored automatically.
+
+Keyboard controls:
+    ESC -> Options -> Keys lets you rebind the keyboard controls (Forward,
+    Fire, Use, Strafe, Run, ...).  Highlight an action, press Enter, then press
+    the new key (Esc cancels).  Bindings are saved automatically.
+
+Config file:
+    Settings are stored in ".doomrc" in this folder (a hidden file because the
+    name starts with a dot).  Delete it to reset everything to defaults.
 
 Useful command-line options (edit play.bat or run from a terminal):
     doom.exe -warp 1            start directly on MAP01

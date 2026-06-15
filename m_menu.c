@@ -201,6 +201,10 @@ void M_VideoAspect(int choice);
 void M_VideoFullscreen(int choice);
 void M_DrawVideo(void);
 
+void M_Keys(int choice);
+void M_KeyBind(int choice);
+void M_DrawKeys(void);
+
 void M_FinishReadThis(int choice);
 void M_LoadSelect(int choice);
 void M_SaveSelect(int choice);
@@ -349,6 +353,7 @@ enum
     option_empty2,
     soundvol,
     video,
+    keys,
     opt_end
 } options_e;
 
@@ -362,7 +367,8 @@ menuitem_t OptionsMenu[]=
     {2,"M_MSENS",	M_ChangeSensitivity,'m'},
     {-1,"",0},
     {1,"M_SVOL",	M_Sound,'s'},
-    {1,"",		M_Video,'v'}	// text-drawn (see M_DrawOptions/M_DrawVideo)
+    {1,"",		M_Video,'v'},	// text-drawn (see M_DrawOptions/M_DrawVideo)
+    {1,"",		M_Keys,'k'}	// text-drawn
 };
 
 menu_t  OptionsDef =
@@ -371,7 +377,7 @@ menu_t  OptionsDef =
     &MainDef,
     OptionsMenu,
     M_DrawOptions,
-    60,30,		// shifted up to fit the extra "Video" item above the status bar
+    60,16,		// shifted up to fit the extra "Video"/"Keys" items
     0
 };
 
@@ -400,6 +406,49 @@ menu_t  VideoDef =
     VideoMenu,
     M_DrawVideo,
     60,60,
+    0
+};
+
+//
+// KEYS MENU (rebind keyboard controls)
+//
+extern int	key_right, key_left, key_up, key_down;
+extern int	key_strafeleft, key_straferight;
+extern int	key_fire, key_use, key_strafe, key_speed;
+
+// The action being rebound (index into M_KeyVars), or -1 if none.
+static int	keyToBind = -1;
+
+static int*	M_KeyVars[]=
+{
+    &key_up, &key_down, &key_left, &key_right,
+    &key_strafeleft, &key_straferight,
+    &key_fire, &key_use, &key_strafe, &key_speed
+};
+
+static char*	M_KeyLabels[]=
+{
+    "Forward", "Backward", "Turn Left", "Turn Right",
+    "Strafe Left", "Strafe Right", "Fire", "Use", "Strafe", "Run"
+};
+
+enum { keys_end = 10 } keys_e;		// must match the arrays above
+
+menuitem_t KeysMenu[keys_end]=
+{
+    {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
+    {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
+    {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
+    {1,"",M_KeyBind,0}
+};
+
+menu_t  KeysDef =
+{
+    keys_end,
+    &OptionsDef,
+    KeysMenu,
+    M_DrawKeys,
+    48,16,
     0
 };
 
@@ -906,6 +955,72 @@ void M_Video(int choice)
     M_SetupNextMenu(&VideoDef);
 }
 
+//
+// Keys menu: rebind keyboard controls.
+//
+static char* M_KeyName(int k)
+{
+    static char buf[16];
+
+    switch (k)
+    {
+      case KEY_RIGHTARROW:	return "RIGHT";
+      case KEY_LEFTARROW:	return "LEFT";
+      case KEY_UPARROW:		return "UP";
+      case KEY_DOWNARROW:	return "DOWN";
+      case KEY_RCTRL:		return "CTRL";
+      case KEY_RALT:		return "ALT";
+      case KEY_RSHIFT:		return "SHIFT";
+      case KEY_ENTER:		return "ENTER";
+      case KEY_TAB:		return "TAB";
+      case KEY_ESCAPE:		return "ESC";
+      case KEY_BACKSPACE:	return "BKSP";
+      case KEY_PAUSE:		return "PAUSE";
+      case ' ':			return "SPACE";
+      case KEY_F1: return "F1";   case KEY_F2: return "F2";
+      case KEY_F3: return "F3";   case KEY_F4: return "F4";
+      case KEY_F5: return "F5";   case KEY_F6: return "F6";
+      case KEY_F7: return "F7";   case KEY_F8: return "F8";
+      case KEY_F9: return "F9";   case KEY_F10: return "F10";
+      case KEY_F11: return "F11"; case KEY_F12: return "F12";
+      default:
+	if (k > ' ' && k < 127)
+	{
+	    buf[0] = toupper(k);
+	    buf[1] = 0;
+	}
+	else
+	    sprintf(buf, "#%d", k);
+	return buf;
+    }
+}
+
+void M_DrawKeys(void)
+{
+    int	i;
+
+    for (i = 0; i < keys_end; i++)
+    {
+	int y = KeysDef.y + LINEHEIGHT*i;
+	M_WriteText(KeysDef.x, y, M_KeyLabels[i]);
+	if (keyToBind == i)
+	    M_WriteText(KeysDef.x + 168, y, "PRESS KEY");
+	else
+	    M_WriteText(KeysDef.x + 168, y, M_KeyName(*M_KeyVars[i]));
+    }
+}
+
+void M_KeyBind(int choice)
+{
+    // Next key press (handled at the top of M_Responder) becomes this binding.
+    keyToBind = choice;
+}
+
+void M_Keys(int choice)
+{
+    M_SetupNextMenu(&KeysDef);
+}
+
 void M_SfxVol(int choice)
 {
     switch(choice)
@@ -1043,7 +1158,7 @@ char	msgNames[2][9]		= {"M_MSGOFF","M_MSGON"};
 
 void M_DrawOptions(void)
 {
-    V_DrawPatchDirect (108,15,0,W_CacheLumpName("M_OPTTTL",PU_CACHE));
+    V_DrawPatchDirect (108,4,0,W_CacheLumpName("M_OPTTTL",PU_CACHE));
 	
     V_DrawPatchDirect (OptionsDef.x + 175,OptionsDef.y+LINEHEIGHT*detail,0,
 		       W_CacheLumpName(detailNames[detailLevel],PU_CACHE));
@@ -1057,9 +1172,10 @@ void M_DrawOptions(void)
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
 		 9,screenSize);
 
-    // "Video" is a text item (no graphic lump for it); draw it at 2x so it
-    // matches the size of the graphic menu items above.
+    // "Video" / "Keys" are text items (no graphic lump); draw at 2x so they
+    // match the size of the graphic menu items above.
     M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*video,"Video",2);
+    M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*keys,"Keys",2);
 }
 
 void M_Options(int choice)
@@ -1502,9 +1618,23 @@ boolean M_Responder (event_t* ev)
     static  int     lasty = 0;
     static  int     mousex = 0;
     static  int     lastx = 0;
-	
+
     ch = -1;
-	
+
+    // Rebinding a control: the next key press becomes the new binding.
+    // ESC cancels; everything else is swallowed while we wait.
+    if (keyToBind >= 0)
+    {
+	if (ev->type == ev_keydown)
+	{
+	    if (ev->data1 != KEY_ESCAPE)
+		*M_KeyVars[keyToBind] = ev->data1;
+	    keyToBind = -1;
+	    S_StartSound(NULL,sfx_pistol);
+	}
+	return true;
+    }
+
     if (ev->type == ev_joystick && joywait < I_GetTime())
     {
 	if (ev->data3 == -1)
