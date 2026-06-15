@@ -1,4 +1,0 @@
-I_InitSound:  configured audio device with 512 samples/slice
-I_InitSound:  pre-cached all sound data
-I_InitSound: sound module ready
-S_Init: default sfx volume 8

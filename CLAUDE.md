@@ -49,6 +49,20 @@ upscale of 320x200). Key design:
   (`m_menu.c`, `M_DrawVideo`/`M_VideoRes`/`M_VideoAspect`), or `-render N` /
   `-aspect` at startup. Aspect ratio is purely an SDL window-shape choice
   (`screen_aspect`, `I_ApplyAspect`); the frame is stretched to fill the window.
+- Video settings persist across runs via the config file: `m_misc.c`'s
+  `defaults[]` table archives `hires` (as `screen_resolution`), `screen_aspect`
+  and `fullscreen_mode` (as `fullscreen`) alongside the classic settings. When
+  adding a new persisted option, add a `default_t` row here and an `extern`.
+
+### Menus added by this port
+
+Beyond the stock Options menu, `m_menu.c` adds two text-drawn items (no graphic
+lumps exist for them, so they render via `M_WriteTextBig`/`M_WriteText` at 2x):
+- **Options -> Video** — resolution / aspect / fullscreen (see above).
+- **Options -> Keys** (`M_Keys`/`M_DrawKeys`, `KeysDef`) — rebind keyboard
+  controls. `M_KeyVars[]` points at the live `key_*` globals (`g_game.c`) and
+  `M_KeyLabels[]` names them; selecting a row enters a "PRESS KEY" capture state.
+  Bindings persist through the same `defaults[]` mechanism as the stock keys.
 
 ### 64-bit porting notes (important when touching old DOOM code)
 

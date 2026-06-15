@@ -1,6 +1,9 @@
 # Build output
 doom.exe
 doomdbg.exe
+/doom
+doom-dbg
+doom-o2g
 *.o
 *.obj
 
@@ -13,6 +16,12 @@ SDL3.dll
 default.cfg
 DOOM*.pcx
 *.dsg
+crash.log
+
+# IWADs / commercial game data are NOT distributed here (licensing)
+*.wad
+run/doom-linux
+run/doom.exe
 
 # Misc
 build.log
