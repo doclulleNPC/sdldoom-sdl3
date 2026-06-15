@@ -466,16 +466,16 @@ typedef struct
   int			maxx;
   
   // leave pads for [minx-1]/[maxx+1]
-  
-  byte		pad1;
-  // Here lies the rub for all
-  //  dynamic resize/change of resolution.
-  byte		top[MAXWIDTH];
-  byte		pad2;
-  byte		pad3;
-  // See above.
-  byte		bottom[MAXWIDTH];
-  byte		pad4;
+
+  // These hold screen row numbers, so they must be wide enough for the
+  // internal resolution (a byte only reaches 255 -> broke hi-res > 255 rows).
+  // 0xffff is the "unset" sentinel (see R_FindPlane / R_CheckPlane).
+  unsigned short	pad1;
+  unsigned short	top[MAXWIDTH];
+  unsigned short	pad2;
+  unsigned short	pad3;
+  unsigned short	bottom[MAXWIDTH];
+  unsigned short	pad4;
 
 } visplane_t;
 

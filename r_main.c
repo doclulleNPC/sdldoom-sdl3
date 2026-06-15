@@ -694,7 +694,7 @@ void R_ExecuteSetViewSize (void)
     
     detailshift = setdetail;
     viewwidth = scaledviewwidth>>detailshift;
-	
+
     centery = viewheight/2;
     centerx = viewwidth/2;
     centerxfrac = centerx<<FRACBITS;
