@@ -274,9 +274,68 @@ V_DrawPatch
 	}
     }
 }
- 
+
 //
-// V_DrawPatchFlipped 
+// V_DrawPatchScaled
+// Like V_DrawPatch, but magnifies the patch by an extra integer factor `sc`
+// (on top of the global hires scaling).  The top-left stays at the 320x200
+// position (x,y); used to draw menu text larger than the base font.
+//
+void
+V_DrawPatchScaled
+( int		x,
+  int		y,
+  int		scrn,
+  patch_t*	patch,
+  int		sc )
+{
+    int		count;
+    int		col;
+    column_t*	column;
+    byte*	desttop;
+    byte*	dest;
+    byte*	source;
+    int		w;
+    int		ps = hires;		// position scale (320x200 -> screen)
+    int		bs = hires * sc;	// magnified block size per source pixel
+    int		i, j;
+
+    y -= SHORT(patch->topoffset);
+    x -= SHORT(patch->leftoffset);
+
+    col = 0;
+    desttop = screens[scrn] + (y*ps)*SCREENWIDTH + x*ps;
+
+    w = SHORT(patch->width);
+
+    for ( ; col<w ; col++, desttop += bs)
+    {
+	column = (column_t *)((byte *)patch + LONG(patch->columnofs[col]));
+
+	while (column->topdelta != 0xff )
+	{
+	    source = (byte *)column + 3;
+	    dest = desttop + (column->topdelta*bs)*SCREENWIDTH;
+	    count = column->length;
+
+	    while (count--)
+	    {
+		for (i=0 ; i<bs ; i++)
+		{
+		    byte* d = dest + i*SCREENWIDTH;
+		    for (j=0 ; j<bs ; j++)
+			d[j] = *source;
+		}
+		source++;
+		dest += bs*SCREENWIDTH;
+	    }
+	    column = (column_t *)(  (byte *)column + column->length + 4 );
+	}
+    }
+}
+
+//
+// V_DrawPatchFlipped
 // Masks a column based masked pic to the screen.
 // Flips horizontally, e.g. to mirror face.
 //

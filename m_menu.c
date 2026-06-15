@@ -198,6 +198,7 @@ void M_Sound(int choice);
 void M_Video(int choice);
 void M_VideoRes(int choice);
 void M_VideoAspect(int choice);
+void M_VideoFullscreen(int choice);
 void M_DrawVideo(void);
 
 void M_FinishReadThis(int choice);
@@ -223,6 +224,7 @@ void M_DrawThermo(int x,int y,int thermWidth,int thermDot);
 void M_DrawEmptyCell(menu_t *menu,int item);
 void M_DrawSelCell(menu_t *menu,int item);
 void M_WriteText(int x, int y, char *string);
+void M_WriteTextBig(int x, int y, char *string, int sc);
 int  M_StringWidth(char *string);
 int  M_StringHeight(char *string);
 void M_StartControlPanel(void);
@@ -380,13 +382,15 @@ enum
 {
     vid_res,
     vid_aspect,
+    vid_fullscreen,
     vid_end
 } video_e;
 
 menuitem_t VideoMenu[]=
 {
     {2,"",	M_VideoRes,'r'},	// left/right changes value
-    {2,"",	M_VideoAspect,'a'}
+    {2,"",	M_VideoAspect,'a'},
+    {2,"",	M_VideoFullscreen,'f'}
 };
 
 menu_t  VideoDef =
@@ -844,14 +848,14 @@ void M_Sound(int choice)
 extern int	screen_aspect;		// i_video.c
 void		V_SetRes (int scale);	// i_video.c
 void		I_ApplyAspect (void);	// i_video.c
+void		I_SetFullscreen (int on);// i_video.c
+int		I_GetFullscreen (void);	// i_video.c
 
 static char* M_ResNames[4]    = { "320x200", "640x400", "960x600", "1280x800" };
 static char* M_AspectNames[4] = { "4:3", "16:10", "16:9", "Stretch" };
 
 void M_DrawVideo(void)
 {
-    M_WriteText(VideoDef.x, VideoDef.y - 22, "VIDEO");
-
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_res, "Resolution");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_res,
 		M_ResNames[(hires-1)&3]);
@@ -859,6 +863,10 @@ void M_DrawVideo(void)
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_aspect, "Aspect");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_aspect,
 		M_AspectNames[screen_aspect&3]);
+
+    M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_fullscreen, "Fullscreen");
+    M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_fullscreen,
+		I_GetFullscreen() ? "On" : "Off");
 }
 
 void M_VideoRes(int choice)
@@ -881,6 +889,11 @@ void M_VideoAspect(int choice)
     else
 	screen_aspect = (screen_aspect+3) & 3;
     I_ApplyAspect();
+}
+
+void M_VideoFullscreen(int choice)
+{
+    I_SetFullscreen(!I_GetFullscreen());
 }
 
 void M_Video(int choice)
@@ -1039,8 +1052,9 @@ void M_DrawOptions(void)
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
 		 9,screenSize);
 
-    // "Video" is a plain text item (no graphic lump for it).
-    M_WriteText(OptionsDef.x,OptionsDef.y+LINEHEIGHT*video,"Video");
+    // "Video" is a text item (no graphic lump for it); draw it at 2x so it
+    // matches the size of the graphic menu items above.
+    M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*video,"Video",2);
 }
 
 void M_Options(int choice)
@@ -1411,6 +1425,55 @@ M_WriteText
 	if (cx+w > BASE_WIDTH)
 	    break;
 	V_DrawPatchDirect(cx, cy, 0, hu_font[c]);
+	cx+=w;
+    }
+}
+
+//
+// M_WriteTextBig
+// Same as M_WriteText but draws each character magnified by `sc` (so menu
+// text can match the size of the graphic menu items).
+//
+void
+M_WriteTextBig
+( int		x,
+  int		y,
+  char*		string,
+  int		sc )
+{
+    int		w;
+    char*	ch;
+    int		c;
+    int		cx;
+    int		cy;
+
+    ch = string;
+    cx = x;
+    cy = y;
+
+    while(1)
+    {
+	c = *ch++;
+	if (!c)
+	    break;
+	if (c == '\n')
+	{
+	    cx = x;
+	    cy += 12*sc;
+	    continue;
+	}
+
+	c = toupper(c) - HU_FONTSTART;
+	if (c < 0 || c>= HU_FONTSIZE)
+	{
+	    cx += 4*sc;
+	    continue;
+	}
+
+	w = SHORT (hu_font[c]->width) * sc;
+	if (cx+w > BASE_WIDTH)
+	    break;
+	V_DrawPatchScaled(cx, cy, 0, hu_font[c], sc);
 	cx+=w;
     }
 }

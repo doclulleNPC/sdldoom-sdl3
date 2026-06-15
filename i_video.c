@@ -358,6 +358,26 @@ void I_ApplyAspect(void)
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
 
+//
+// Toggle borderless-desktop fullscreen at runtime (from the Video menu).
+//
+void I_SetFullscreen(int on)
+{
+    if (!window)
+	return;
+
+    fullscreen_mode = on ? 1 : 0;
+    SDL_SetWindowFullscreen(window, fullscreen_mode ? true : false);
+
+    if (!fullscreen_mode)
+	I_ApplyAspect();		// restore the windowed size
+}
+
+int I_GetFullscreen(void)
+{
+    return fullscreen_mode;
+}
+
 // Cross-module hooks used when changing resolution.
 extern int	screenblocks;
 extern int	detailLevel;
