@@ -54,12 +54,6 @@ static Uint32		palette[256];
 // Fake mouse handling.
 boolean		grabMouse;
 
-// Blocky mode,
-// replace each 320x200 pixel with multiply*multiply pixels.
-// (SDL3 scales the texture to the window for us; multiply only sizes the
-//  initial window.)
-static int	multiply=1;
-
 
 //
 //  Translates the key
@@ -302,8 +296,8 @@ static const struct { int num, den; } aspects[4] =
     { 4, 3 }, { 16, 10 }, { 16, 9 }, { 0, 0 }	// {0,0} = free
 };
 
-// Base on-screen window width (independent of the internal render resolution).
-static int	window_basew = BASE_WIDTH*3;	// default 3x -> 960 px wide
+// Set when the window was created with -fullscreen (don't resize it then).
+static int	fullscreen_mode = 0;
 
 
 //
@@ -329,20 +323,39 @@ static void I_CreateTexture(void)
 }
 
 //
-// Resize the window to the desired aspect ratio (no-op in free mode).
+// Size the window to match the internal resolution and the chosen aspect
+// ratio, clamped to fit the display.  Called whenever the resolution or the
+// aspect ratio changes, so picking a higher resolution makes a bigger window.
 //
 void I_ApplyAspect(void)
 {
-    int	w, h;
+    int		w, h;
+    SDL_Rect	bounds;
+    SDL_DisplayID disp;
 
-    if (!window)
-	return;
-    if (aspects[screen_aspect].num == 0)	// free: leave window as-is
+    if (!window || fullscreen_mode)
 	return;
 
-    w = window_basew;
-    h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
+    // Window is the internal-resolution width, with the height giving the
+    // requested aspect ratio (free mode keeps the native 16:10 frame shape).
+    w = SCREENWIDTH;
+    if (aspects[screen_aspect].num)
+	h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
+    else
+	h = SCREENHEIGHT;
+
+    // Don't let the window grow past the usable desktop area.
+    disp = SDL_GetDisplayForWindow(window);
+    if (disp && SDL_GetDisplayUsableBounds(disp, &bounds))
+    {
+	int maxw = bounds.w - 40;
+	int maxh = bounds.h - 80;
+	if (w > maxw) { h = h * maxw / w; w = maxw; }
+	if (h > maxh) { w = w * maxh / h; h = maxh; }
+    }
+
     SDL_SetWindowSize(window, w, h);
+    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
 }
 
 // Cross-module hooks used when changing resolution.
@@ -375,6 +388,9 @@ void V_SetRes(int scale)
     // background at the new resolution.
     ST_SetRes();				// status bar background buffer + refresh
     R_SetViewSize (screenblocks, detailLevel);
+
+    // Grow/shrink the window to match the new resolution.
+    I_ApplyAspect();
 }
 
 
@@ -389,15 +405,6 @@ void I_InitGraphics(void)
 	return;
     firsttime = 0;
 
-    // -1 .. -5 select the on-screen window size (base 320 multiplied).
-    multiply = 3;
-    if (M_CheckParm("-1")) multiply = 1;
-    if (M_CheckParm("-2")) multiply = 2;
-    if (M_CheckParm("-3")) multiply = 3;
-    if (M_CheckParm("-4")) multiply = 4;
-    if (M_CheckParm("-5")) multiply = 5;
-    window_basew = BASE_WIDTH * multiply;
-
     // check if the user wants to grab the mouse (quite unnice)
     grabMouse = !!M_CheckParm("-grabmouse");
 
@@ -408,16 +415,34 @@ void I_InitGraphics(void)
 	    screen_aspect = atoi(myargv[p+1]) & 3;
     }
 
-    // Window sized for the chosen aspect (default 4:3) at the requested scale.
-    w = window_basew;
+    // Initial resolution scale (also drives the window size).  -1..-4 pick the
+    // scale directly; -render N is an alias.  Changeable later in the menu.
+    startscale = 2;				// default 640x400
+    if (M_CheckParm("-1")) startscale = 1;
+    if (M_CheckParm("-2")) startscale = 2;
+    if (M_CheckParm("-3")) startscale = 3;
+    if (M_CheckParm("-4")) startscale = 4;
+    {
+	int p = M_CheckParm("-render");
+	if (p && p < myargc-1)
+	    startscale = atoi(myargv[p+1]);
+    }
+    if (startscale < 1) startscale = 1;
+    if (startscale > 4) startscale = 4;
+
+    // Initial window size = resolution width, height for the chosen aspect.
+    w = BASE_WIDTH * startscale;
     if (aspects[screen_aspect].num)
 	h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
     else
-	h = w * 3 / 4;
+	h = BASE_HEIGHT * startscale;
 
     window_flags |= SDL_WINDOW_RESIZABLE;
     if (!!M_CheckParm("-fullscreen"))
+    {
         window_flags |= SDL_WINDOW_FULLSCREEN;
+	fullscreen_mode = 1;
+    }
 
     window = SDL_CreateWindow("SDL DOOM! v1.10", w, h, window_flags);
     if ( window == NULL )
@@ -435,13 +460,6 @@ void I_InitGraphics(void)
 
     // screens[0..3] are allocated by V_Init at the maximum resolution; the
     // 3D view, HUD etc. render into screens[0] at the current SCREENWIDTH.
-    // Default internal resolution: 2x (640x400) unless -render N overrides.
-    startscale = 2;
-    if (M_CheckParm("-1")) startscale = 1;	// keep tiny window crisp
-    {
-	int p = M_CheckParm("-render");
-	if (p && p < myargc-1)
-	    startscale = atoi(myargv[p+1]);
-    }
+    // V_SetRes also sizes the window to match (via I_ApplyAspect).
     V_SetRes(startscale);
 }
