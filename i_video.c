@@ -296,8 +296,9 @@ static const struct { int num, den; } aspects[4] =
     { 4, 3 }, { 16, 10 }, { 16, 9 }, { 0, 0 }	// {0,0} = free
 };
 
-// Set when the window was created with -fullscreen (don't resize it then).
-static int	fullscreen_mode = 0;
+// Non-zero when displaying fullscreen (don't resize the window then).
+// Saved/restored via the config file (see m_misc.c defaults).
+int	fullscreen_mode = 0;
 
 
 //
@@ -392,7 +393,7 @@ void		ST_SetRes (void);
 void V_SetRes(int scale)
 {
     if (scale < 1) scale = 1;
-    if (scale > 4) scale = 4;
+    if (scale > 6) scale = 6;
     if (BASE_WIDTH*scale > MAXWIDTH || BASE_HEIGHT*scale > MAXHEIGHT)
 	return;
 
@@ -428,16 +429,18 @@ void I_InitGraphics(void)
     // check if the user wants to grab the mouse (quite unnice)
     grabMouse = !!M_CheckParm("-grabmouse");
 
-    // Optional starting aspect ratio: -aspect 0..3 (4:3, 16:10, 16:9, free).
+    // screen_aspect / hires / fullscreen_mode come from the config file
+    // (loaded by M_LoadDefaults before this runs).  Optional -aspect overrides.
+    screen_aspect &= 3;
     {
 	int p = M_CheckParm("-aspect");
 	if (p && p < myargc-1)
 	    screen_aspect = atoi(myargv[p+1]) & 3;
     }
 
-    // Initial resolution scale (also drives the window size).  -1..-4 pick the
-    // scale directly; -render N is an alias.  Changeable later in the menu.
-    startscale = 2;				// default 640x400
+    // Initial resolution scale (also drives the window size).  Defaults to the
+    // saved value; -1..-4 / -render N override.  Changeable later in the menu.
+    startscale = hires;
     if (M_CheckParm("-1")) startscale = 1;
     if (M_CheckParm("-2")) startscale = 2;
     if (M_CheckParm("-3")) startscale = 3;
@@ -448,7 +451,7 @@ void I_InitGraphics(void)
 	    startscale = atoi(myargv[p+1]);
     }
     if (startscale < 1) startscale = 1;
-    if (startscale > 4) startscale = 4;
+    if (startscale > 6) startscale = 6;
 
     // Initial window size = resolution width, height for the chosen aspect.
     w = BASE_WIDTH * startscale;
@@ -458,7 +461,7 @@ void I_InitGraphics(void)
 	h = BASE_HEIGHT * startscale;
 
     window_flags |= SDL_WINDOW_RESIZABLE;
-    if (!!M_CheckParm("-fullscreen"))
+    if (fullscreen_mode || M_CheckParm("-fullscreen"))
     {
         window_flags |= SDL_WINDOW_FULLSCREEN;
 	fullscreen_mode = 1;

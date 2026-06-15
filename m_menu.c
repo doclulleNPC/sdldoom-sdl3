@@ -851,14 +851,19 @@ void		I_ApplyAspect (void);	// i_video.c
 void		I_SetFullscreen (int on);// i_video.c
 int		I_GetFullscreen (void);	// i_video.c
 
-static char* M_ResNames[4]    = { "320x200", "640x400", "960x600", "1280x800" };
+static char* M_ResNames[6]    = { "320x200", "640x400", "960x600",
+				  "1280x800", "1600x1000", "1920x1200" };
 static char* M_AspectNames[4] = { "4:3", "16:10", "16:9", "Stretch" };
 
 void M_DrawVideo(void)
 {
+    int ri = hires-1;
+    if (ri < 0) ri = 0;
+    if (ri > 5) ri = 5;
+
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_res, "Resolution");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_res,
-		M_ResNames[(hires-1)&3]);
+		M_ResNames[ri]);
 
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_aspect, "Aspect");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_aspect,
@@ -874,7 +879,7 @@ void M_VideoRes(int choice)
     // choice 0 = left (smaller), 1 = right/enter (larger)
     if (choice)
     {
-	if (hires < 4) V_SetRes(hires+1);
+	if (hires < 6) V_SetRes(hires+1);
     }
     else
     {

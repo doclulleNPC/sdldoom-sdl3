@@ -107,9 +107,9 @@ typedef enum
 #define	BASE_HEIGHT		200
 
 // Maximum internal resolution the static renderer tables are sized for.
-// (Allows up to 4x = 1280x800 supersampling of the base 320x200 frame.)
-#define	MAXWIDTH		1280
-#define	MAXHEIGHT		800
+// (Allows up to 6x = 1920x1200 supersampling of the base 320x200 frame.)
+#define	MAXWIDTH		1920
+#define	MAXHEIGHT		1200
 
 // The internal rendering resolution.  This is now a runtime value
 // (BASE_WIDTH*hires x BASE_HEIGHT*hires) so it can be changed from the menu;

@@ -203,6 +203,10 @@ extern int	showMessages;
 // machine-independent sound params
 extern	int	numChannels;
 
+// video settings (i_video.c; hires is in doomdef.h)
+extern	int	screen_aspect;
+extern	int	fullscreen_mode;
+
 
 extern char*	chat_macros[];
 
@@ -256,6 +260,11 @@ default_t	defaults[] =
 
 
     {"usegamma",&usegamma, 0},
+
+    // Video settings (persist resolution / aspect / fullscreen across runs).
+    {"screen_resolution",&hires, 2},
+    {"screen_aspect",&screen_aspect, 0},
+    {"fullscreen",&fullscreen_mode, 0},
 
 #ifndef __BEOS__
     {"chatmacro0", (int *) &chat_macros[0], (intptr_t) HUSTR_CHATMACRO0 },

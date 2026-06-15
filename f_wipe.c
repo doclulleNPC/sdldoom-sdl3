@@ -26,6 +26,8 @@ static const char rcsid[] = "$Id: f_wipe.c,v 1.2 1997/02/03 22:45:09 b1 Exp $";
 
 
 
+#include <stdlib.h>	/* malloc/free for the wipe scratch buffer */
+
 #include "z_zone.h"
 #include "i_video.h"
 #include "v_video.h"
@@ -57,7 +59,9 @@ wipe_shittyColMajorXform
     int		y;
     short*	dest;
 
-    dest = (short*) Z_Malloc(width*height*2, PU_STATIC, 0);
+    // Transient full-screen-sized scratch buffer; use malloc, not the DOOM
+    // zone, which is too small for this at high internal resolutions.
+    dest = (short*) malloc(width*height*2);
 
     for(y=0;y<height;y++)
 	for(x=0;x<width;x++)
@@ -65,7 +69,7 @@ wipe_shittyColMajorXform
 
     memcpy(array, dest, width*height*2);
 
-    Z_Free(dest);
+    free(dest);
 
 }
 
