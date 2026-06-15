@@ -155,9 +155,11 @@ int		key_straferight;
 int             key_fire;
 int		key_use;
 int		key_strafe;
-int		key_speed; 
- 
-int             mousebfire; 
+int		key_speed;
+
+boolean		autorun;	// key_speed is a toggle: persistent run state
+
+int             mousebfire;
 int             mousebstrafe; 
 int             mousebforward; 
  
@@ -255,7 +257,9 @@ void G_BuildTiccmd (ticcmd_t* cmd)
  
     strafe = gamekeydown[key_strafe] || mousebuttons[mousebstrafe] 
 	|| joybuttons[joybstrafe]; 
-    speed = gamekeydown[key_speed] || joybuttons[joybspeed];
+    // key_speed is a toggle (autorun), not a momentary hold; the joystick
+    // speed button stays momentary.
+    speed = autorun || joybuttons[joybspeed];
  
     forward = side = 0;
     
@@ -558,14 +562,21 @@ boolean G_Responder (event_t* ev)
     switch (ev->type) 
     { 
       case ev_keydown: 
-	if (ev->data1 == KEY_PAUSE) 
-	{ 
-	    sendpause = true; 
-	    return true; 
-	} 
-	if (ev->data1 <NUMKEYS) 
-	    gamekeydown[ev->data1] = true; 
-	return true;    // eat key down events 
+	if (ev->data1 == KEY_PAUSE)
+	{
+	    sendpause = true;
+	    return true;
+	}
+	// Run key is a toggle: flip autorun on the press edge only (ignore the
+	// key-repeat stream, which keeps gamekeydown[key_speed] already set).
+	if (ev->data1 == key_speed && !gamekeydown[key_speed])
+	{
+	    autorun = !autorun;
+	    players[consoleplayer].message = autorun ? "Always Run ON" : "Always Run OFF";
+	}
+	if (ev->data1 <NUMKEYS)
+	    gamekeydown[ev->data1] = true;
+	return true;    // eat key down events
  
       case ev_keyup: 
 	if (ev->data1 <NUMKEYS) 
