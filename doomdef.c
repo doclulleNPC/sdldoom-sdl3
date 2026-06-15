@@ -33,6 +33,10 @@ rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 
 // Location for any defines turned variables.
 
-// None.
+// Internal rendering resolution.  Defaults to 320x200 (hires==1); changed at
+// runtime by V_SetRes() (see i_video.c) from the menu.
+int	SCREENWIDTH  = BASE_WIDTH;
+int	SCREENHEIGHT = BASE_HEIGHT;
+int	hires        = 1;
 
 

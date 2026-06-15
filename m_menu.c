@@ -195,6 +195,11 @@ void M_SizeDisplay(int choice);
 void M_StartGame(int choice);
 void M_Sound(int choice);
 
+void M_Video(int choice);
+void M_VideoRes(int choice);
+void M_VideoAspect(int choice);
+void M_DrawVideo(void);
+
 void M_FinishReadThis(int choice);
 void M_LoadSelect(int choice);
 void M_SaveSelect(int choice);
@@ -341,6 +346,7 @@ enum
     mousesens,
     option_empty2,
     soundvol,
+    video,
     opt_end
 } options_e;
 
@@ -353,7 +359,8 @@ menuitem_t OptionsMenu[]=
     {-1,"",0},
     {2,"M_MSENS",	M_ChangeSensitivity,'m'},
     {-1,"",0},
-    {1,"M_SVOL",	M_Sound,'s'}
+    {1,"M_SVOL",	M_Sound,'s'},
+    {1,"",		M_Video,'v'}	// text-drawn (see M_DrawOptions/M_DrawVideo)
 };
 
 menu_t  OptionsDef =
@@ -362,7 +369,33 @@ menu_t  OptionsDef =
     &MainDef,
     OptionsMenu,
     M_DrawOptions,
-    60,37,
+    60,30,		// shifted up to fit the extra "Video" item above the status bar
+    0
+};
+
+//
+// VIDEO MENU (internal resolution + display aspect ratio)
+//
+enum
+{
+    vid_res,
+    vid_aspect,
+    vid_end
+} video_e;
+
+menuitem_t VideoMenu[]=
+{
+    {2,"",	M_VideoRes,'r'},	// left/right changes value
+    {2,"",	M_VideoAspect,'a'}
+};
+
+menu_t  VideoDef =
+{
+    vid_end,
+    &OptionsDef,
+    VideoMenu,
+    M_DrawVideo,
+    60,60,
     0
 };
 
@@ -805,6 +838,56 @@ void M_Sound(int choice)
     M_SetupNextMenu(&SoundDef);
 }
 
+//
+// Video menu: internal resolution + display aspect ratio.
+//
+extern int	screen_aspect;		// i_video.c
+void		V_SetRes (int scale);	// i_video.c
+void		I_ApplyAspect (void);	// i_video.c
+
+static char* M_ResNames[4]    = { "320x200", "640x400", "960x600", "1280x800" };
+static char* M_AspectNames[4] = { "4:3", "16:10", "16:9", "Stretch" };
+
+void M_DrawVideo(void)
+{
+    M_WriteText(VideoDef.x, VideoDef.y - 22, "VIDEO");
+
+    M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_res, "Resolution");
+    M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_res,
+		M_ResNames[(hires-1)&3]);
+
+    M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_aspect, "Aspect");
+    M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_aspect,
+		M_AspectNames[screen_aspect&3]);
+}
+
+void M_VideoRes(int choice)
+{
+    // choice 0 = left (smaller), 1 = right/enter (larger)
+    if (choice)
+    {
+	if (hires < 4) V_SetRes(hires+1);
+    }
+    else
+    {
+	if (hires > 1) V_SetRes(hires-1);
+    }
+}
+
+void M_VideoAspect(int choice)
+{
+    if (choice)
+	screen_aspect = (screen_aspect+1) & 3;
+    else
+	screen_aspect = (screen_aspect+3) & 3;
+    I_ApplyAspect();
+}
+
+void M_Video(int choice)
+{
+    M_SetupNextMenu(&VideoDef);
+}
+
 void M_SfxVol(int choice)
 {
     switch(choice)
@@ -955,6 +1038,9 @@ void M_DrawOptions(void)
 	
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
 		 9,screenSize);
+
+    // "Video" is a plain text item (no graphic lump for it).
+    M_WriteText(OptionsDef.x,OptionsDef.y+LINEHEIGHT*video,"Video");
 }
 
 void M_Options(int choice)
@@ -1322,7 +1408,7 @@ M_WriteText
 	}
 		
 	w = SHORT (hu_font[c]->width);
-	if (cx+w > SCREENWIDTH)
+	if (cx+w > BASE_WIDTH)
 	    break;
 	V_DrawPatchDirect(cx, cy, 0, hu_font[c]);
 	cx+=w;

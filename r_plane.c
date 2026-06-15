@@ -56,8 +56,8 @@ visplane_t*		floorplane;
 visplane_t*		ceilingplane;
 
 // ?
-#define MAXOPENINGS	SCREENWIDTH*64
-short			openings[MAXOPENINGS];
+#define MAXOPENINGS	(SCREENWIDTH*64)	// runtime limit (overflow check)
+short			openings[MAXWIDTH*64];	// allocated for the max resolution
 short*			lastopening;
 
 
@@ -66,15 +66,15 @@ short*			lastopening;
 //  floorclip starts out SCREENHEIGHT
 //  ceilingclip starts out -1
 //
-short			floorclip[SCREENWIDTH];
-short			ceilingclip[SCREENWIDTH];
+short			floorclip[MAXWIDTH];
+short			ceilingclip[MAXWIDTH];
 
 //
 // spanstart holds the start of a plane span
 // initialized to 0 at start
 //
-int			spanstart[SCREENHEIGHT];
-int			spanstop[SCREENHEIGHT];
+int			spanstart[MAXHEIGHT];
+int			spanstop[MAXHEIGHT];
 
 //
 // texture mapping
@@ -82,15 +82,15 @@ int			spanstop[SCREENHEIGHT];
 lighttable_t**		planezlight;
 fixed_t			planeheight;
 
-fixed_t			yslope[SCREENHEIGHT];
-fixed_t			distscale[SCREENWIDTH];
+fixed_t			yslope[MAXHEIGHT];
+fixed_t			distscale[MAXWIDTH];
 fixed_t			basexscale;
 fixed_t			baseyscale;
 
-fixed_t			cachedheight[SCREENHEIGHT];
-fixed_t			cacheddistance[SCREENHEIGHT];
-fixed_t			cachedxstep[SCREENHEIGHT];
-fixed_t			cachedystep[SCREENHEIGHT];
+fixed_t			cachedheight[MAXHEIGHT];
+fixed_t			cacheddistance[MAXHEIGHT];
+fixed_t			cachedxstep[MAXHEIGHT];
+fixed_t			cachedystep[MAXHEIGHT];
 
 
 

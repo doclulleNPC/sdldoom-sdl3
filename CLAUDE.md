@@ -28,6 +28,28 @@ There is no test suite, no linter, and no CI — "running it" means launching `d
 
 The legacy Unix autotools build (`configure.in`, `Makefile.am`, SDL 1.x via `AM_PATH_SDL`) is left in place but is **stale** — it predates the SDL3 port and won't link against SDL3.
 
+### Variable internal resolution (hi-res renderer)
+
+The engine renders the 3D view at a true higher internal resolution (not an
+upscale of 320x200). Key design:
+- `SCREENWIDTH`/`SCREENHEIGHT` are **runtime variables** (in `doomdef.c`), equal
+  to `BASE_WIDTH*hires` x `BASE_HEIGHT*hires`. `hires` is the integer scale
+  (1..4). Renderer static tables are sized for `MAXWIDTH`x`MAXHEIGHT`.
+- **All 2D drawing is authored in 320x200 (`BASE_*`) coordinates** and scaled up
+  by `hires` inside the `V_*` functions (`v_video.c`: `V_DrawPatch`,
+  `V_DrawPatchFlipped`, `V_CopyRect`). The 3D view, automap and screen wipe draw
+  natively at `SCREENWIDTH`/`SCREENHEIGHT`. So when editing HUD/menu/status-bar/
+  intermission/finale code, positions must use `BASE_WIDTH`/`BASE_HEIGHT`, not
+  `SCREENWIDTH`/`SCREENHEIGHT`. The view-border code (`r_draw.c`) is the one place
+  that divides its (hi-res) view rect back to base coords before calling `V_*`.
+- `V_SetRes(scale)` (`i_video.c`) changes resolution at runtime: updates the
+  globals, recreates the SDL texture, reallocates the status bar buffer
+  (`ST_SetRes`), and flags a renderer rebuild via `R_SetViewSize` (`D_Display`
+  then repaints at the new size). Reached from the menu: **Options -> Video**
+  (`m_menu.c`, `M_DrawVideo`/`M_VideoRes`/`M_VideoAspect`), or `-render N` /
+  `-aspect` at startup. Aspect ratio is purely an SDL window-shape choice
+  (`screen_aspect`, `I_ApplyAspect`); the frame is stretched to fill the window.
+
 ### 64-bit porting notes (important when touching old DOOM code)
 
 Vanilla DOOM assumes 32-bit (ILP32) and stores pointers in `int`/aligns via `(int)`. On Win64 (LLP64: `long` is 32-bit, pointers 64-bit) several idioms are silent corruption — fixed here, watch for more:

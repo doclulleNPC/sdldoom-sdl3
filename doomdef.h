@@ -104,13 +104,21 @@ typedef enum
 #define	SCREEN_MUL		1
 #define	INV_ASPECT_RATIO	0.625 // 0.75, ideally
 
-// Defines suck. C sucks.
-// C++ might sucks for OOP, but it sure is a better C.
-// So there.
-#define SCREENWIDTH  320
-//SCREEN_MUL*BASE_WIDTH //320
-#define SCREENHEIGHT 200
-//(int)(SCREEN_MUL*BASE_WIDTH*INV_ASPECT_RATIO) //200
+#define	BASE_HEIGHT		200
+
+// Maximum internal resolution the static renderer tables are sized for.
+// (Allows up to 4x = 1280x800 supersampling of the base 320x200 frame.)
+#define	MAXWIDTH		1280
+#define	MAXHEIGHT		800
+
+// The internal rendering resolution.  This is now a runtime value
+// (BASE_WIDTH*hires x BASE_HEIGHT*hires) so it can be changed from the menu;
+// all 2D drawing is authored in 320x200 (BASE) space and scaled up by the
+// V_ functions, while the 3D view / automap render natively at this size.
+extern int	SCREENWIDTH;
+extern int	SCREENHEIGHT;
+// Integer scale factor, SCREENWIDTH/BASE_WIDTH (1 = 320x200, 2 = 640x400, ...).
+extern int	hires;
 
 
 

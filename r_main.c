@@ -100,7 +100,7 @@ int			viewangletox[FINEANGLES/2];
 // The xtoviewangleangle[] table maps a screen pixel
 // to the lowest viewangle that maps back to x ranges
 // from clipangle to -clipangle.
-angle_t			xtoviewangle[SCREENWIDTH+1];
+angle_t			xtoviewangle[MAXWIDTH+1];
 
 
 // UNUSED.
@@ -686,8 +686,10 @@ void R_ExecuteSetViewSize (void)
     }
     else
     {
-	scaledviewwidth = setblocks*32;
-	viewheight = (setblocks*168/10)&~7;
+	// Compute the view window in base 320x200 space, then scale up to the
+	// internal resolution.
+	scaledviewwidth = (setblocks*32) * hires;
+	viewheight = ((setblocks*168/10)&~7) * hires;
     }
     
     detailshift = setdetail;

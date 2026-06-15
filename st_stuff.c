@@ -260,7 +260,7 @@ rcsid[] = "$Id: st_stuff.c,v 1.6 1997/02/03 22:45:13 b1 Exp $";
     (strlen(mapnames[(gameepisode-1)*9+(gamemap-1)]))
 
 #define ST_MAPTITLEX \
-    (SCREENWIDTH - ST_MAPWIDTH * ST_CHATFONTWIDTH)
+    (BASE_WIDTH - ST_MAPWIDTH * ST_CHATFONTWIDTH)
 
 #define ST_MAPTITLEY		0
 #define ST_MAPHEIGHT		1
@@ -1467,5 +1467,21 @@ void ST_Init (void)
 {
     veryfirsttime = 0;
     ST_loadData();
-    screens[4] = (byte *) Z_Malloc(ST_WIDTH*ST_HEIGHT, PU_STATIC, 0);
+    // Status bar background buffer, at the current internal resolution.
+    // Width is the full SCREENWIDTH (the V_CopyRect stride); height is the
+    // status bar height scaled up by hires.
+    screens[4] = (byte *) Z_Malloc(SCREENWIDTH*ST_HEIGHT*hires, PU_STATIC, 0);
+}
+
+//
+// ST_SetRes
+// Reallocate the status bar background buffer after a resolution change and
+// force a full status bar redraw.
+//
+void ST_SetRes (void)
+{
+    if (screens[4])
+	Z_Free (screens[4]);
+    screens[4] = (byte *) Z_Malloc(SCREENWIDTH*ST_HEIGHT*hires, PU_STATIC, 0);
+    st_firsttime = true;
 }

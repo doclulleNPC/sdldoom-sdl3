@@ -27,11 +27,11 @@
 #include "doomtype.h"
 #include "d_event.h"
 
-// Size of statusbar.
-// Now sensitive for scaling.
-#define ST_HEIGHT	32*SCREEN_MUL
-#define ST_WIDTH	SCREENWIDTH
-#define ST_Y		(SCREENHEIGHT - ST_HEIGHT)
+// Size of statusbar, in base 320x200 space (the V_ functions scale it up to
+// the current internal resolution).
+#define ST_HEIGHT	32
+#define ST_WIDTH	BASE_WIDTH
+#define ST_Y		(BASE_HEIGHT - ST_HEIGHT)
 
 
 //
@@ -52,6 +52,9 @@ void ST_Start (void);
 
 // Called by startup code.
 void ST_Init (void);
+
+// Called after a resolution change (reallocates the background buffer).
+void ST_SetRes (void);
 
 
 

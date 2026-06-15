@@ -292,29 +292,130 @@ void I_SetPalette (byte* pal)
 }
 
 
+// Desired display aspect ratio (controls window shape; the frame is stretched
+// to fill the window).  0 = 4:3 (classic), 1 = 16:10 (square pixels),
+// 2 = 16:9, 3 = stretch/free.
+int	screen_aspect = 0;
+
+static const struct { int num, den; } aspects[4] =
+{
+    { 4, 3 }, { 16, 10 }, { 16, 9 }, { 0, 0 }	// {0,0} = free
+};
+
+// Base on-screen window width (independent of the internal render resolution).
+static int	window_basew = BASE_WIDTH*3;	// default 3x -> 960 px wide
+
+
+//
+// (Re)create the streaming texture + logical presentation to match the
+// current internal resolution (SCREENWIDTH x SCREENHEIGHT).
+//
+static void I_CreateTexture(void)
+{
+    if (texture)
+	SDL_DestroyTexture(texture);
+
+    // The frame is presented stretched to fill the window; the window shape
+    // (set by I_ApplyAspect) therefore determines the displayed aspect ratio.
+    SDL_SetRenderLogicalPresentation(renderer, SCREENWIDTH, SCREENHEIGHT,
+				     SDL_LOGICAL_PRESENTATION_STRETCH);
+
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+				SDL_TEXTUREACCESS_STREAMING,
+				SCREENWIDTH, SCREENHEIGHT);
+    if ( texture == NULL )
+	I_Error("Could not create texture: %s", SDL_GetError());
+    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+}
+
+//
+// Resize the window to the desired aspect ratio (no-op in free mode).
+//
+void I_ApplyAspect(void)
+{
+    int	w, h;
+
+    if (!window)
+	return;
+    if (aspects[screen_aspect].num == 0)	// free: leave window as-is
+	return;
+
+    w = window_basew;
+    h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
+    SDL_SetWindowSize(window, w, h);
+}
+
+// Cross-module hooks used when changing resolution.
+extern int	screenblocks;
+extern int	detailLevel;
+void		R_SetViewSize (int blocks, int detail);
+void		ST_SetRes (void);
+
+//
+// V_SetRes
+// Change the internal rendering resolution at runtime (scale = 1..4).
+// Rebuilds the renderer tables, status bar buffer and SDL texture.
+//
+void V_SetRes(int scale)
+{
+    if (scale < 1) scale = 1;
+    if (scale > 4) scale = 4;
+    if (BASE_WIDTH*scale > MAXWIDTH || BASE_HEIGHT*scale > MAXHEIGHT)
+	return;
+
+    hires        = scale;
+    SCREENWIDTH  = BASE_WIDTH  * scale;
+    SCREENHEIGHT = BASE_HEIGHT * scale;
+
+    if (renderer)
+	I_CreateTexture();
+
+    // Rebuild resolution-dependent state.  R_SetViewSize sets setsizeneeded,
+    // so the next D_Display rebuilds the view tables and repaints the border
+    // background at the new resolution.
+    ST_SetRes();				// status bar background buffer + refresh
+    R_SetViewSize (screenblocks, detailLevel);
+}
+
+
 void I_InitGraphics(void)
 {
 
     static int	firsttime=1;
     Uint32	window_flags = 0;
-    int		w, h;
+    int		w, h, startscale;
 
     if (!firsttime)
 	return;
     firsttime = 0;
 
-    if (M_CheckParm("-2"))
-	multiply = 2;
-
-    if (M_CheckParm("-3"))
-	multiply = 3;
+    // -1 .. -5 select the on-screen window size (base 320 multiplied).
+    multiply = 3;
+    if (M_CheckParm("-1")) multiply = 1;
+    if (M_CheckParm("-2")) multiply = 2;
+    if (M_CheckParm("-3")) multiply = 3;
+    if (M_CheckParm("-4")) multiply = 4;
+    if (M_CheckParm("-5")) multiply = 5;
+    window_basew = BASE_WIDTH * multiply;
 
     // check if the user wants to grab the mouse (quite unnice)
     grabMouse = !!M_CheckParm("-grabmouse");
 
-    w = SCREENWIDTH * multiply;
-    h = SCREENHEIGHT * multiply;
+    // Optional starting aspect ratio: -aspect 0..3 (4:3, 16:10, 16:9, free).
+    {
+	int p = M_CheckParm("-aspect");
+	if (p && p < myargc-1)
+	    screen_aspect = atoi(myargv[p+1]) & 3;
+    }
 
+    // Window sized for the chosen aspect (default 4:3) at the requested scale.
+    w = window_basew;
+    if (aspects[screen_aspect].num)
+	h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
+    else
+	h = w * 3 / 4;
+
+    window_flags |= SDL_WINDOW_RESIZABLE;
     if (!!M_CheckParm("-fullscreen"))
         window_flags |= SDL_WINDOW_FULLSCREEN;
 
@@ -326,25 +427,21 @@ void I_InitGraphics(void)
     if ( renderer == NULL )
 	I_Error("Could not create renderer: %s", SDL_GetError());
 
-    // Always present at the native DOOM resolution, letterboxed and
-    // pixel-doubled by the renderer to fill the window.
-    SDL_SetRenderLogicalPresentation(renderer, SCREENWIDTH, SCREENHEIGHT,
-				     SDL_LOGICAL_PRESENTATION_LETTERBOX);
-
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
-				SDL_TEXTUREACCESS_STREAMING,
-				SCREENWIDTH, SCREENHEIGHT);
-    if ( texture == NULL )
-	I_Error("Could not create texture: %s", SDL_GetError());
-    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    I_CreateTexture();
 
     SDL_HideCursor();
     if (grabMouse)
 	SDL_SetWindowRelativeMouseMode(window, true);
 
-    // The DOOM! code expects screens[0] to be valid at all times, so always
-    // give it its own 8-bit 320x200 buffer.
-    screens[0] = (unsigned char *) malloc (SCREENWIDTH * SCREENHEIGHT);
-    if ( screens[0] == NULL )
-	I_Error("Couldn't allocate screen memory");
+    // screens[0..3] are allocated by V_Init at the maximum resolution; the
+    // 3D view, HUD etc. render into screens[0] at the current SCREENWIDTH.
+    // Default internal resolution: 2x (640x400) unless -render N overrides.
+    startscale = 2;
+    if (M_CheckParm("-1")) startscale = 1;	// keep tiny window crisp
+    {
+	int p = M_CheckParm("-render");
+	if (p && p < myargc-1)
+	    startscale = atoi(myargv[p+1]);
+    }
+    V_SetRes(startscale);
 }

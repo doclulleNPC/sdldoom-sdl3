@@ -43,11 +43,9 @@ rcsid[] = "$Id: r_draw.c,v 1.4 1997/02/03 16:47:55 b1 Exp $";
 #include "doomstat.h"
 
 
-// ?
-#define MAXWIDTH			1120
-#define MAXHEIGHT			832
+// MAXWIDTH/MAXHEIGHT now come from doomdef.h (shared with the renderer tables).
 
-// status bar height at bottom of screen
+// status bar height at bottom of screen, in base 320x200 space.
 #define SBARHEIGHT		32
 
 //
@@ -256,8 +254,9 @@ void R_DrawColumnLow (void)
 //
 // Spectre/Invisibility.
 //
-#define FUZZTABLE		50 
-#define FUZZOFF	(SCREENWIDTH)
+#define FUZZTABLE		50
+// +/- one screen row; multiplied by the runtime SCREENWIDTH at use (below).
+#define FUZZOFF	(1)
 
 
 int	fuzzoffset[FUZZTABLE] =
@@ -355,7 +354,7 @@ void R_DrawFuzzColumn (void)
 	//  a pixel that is either one column
 	//  left or right of the current one.
 	// Add index from colormap to index.
-	*dest = colormaps[6*256+dest[fuzzoffset[fuzzpos]]]; 
+	*dest = colormaps[6*256+dest[fuzzoffset[fuzzpos]*SCREENWIDTH]]; 
 
 	// Clamp table lookup index.
 	if (++fuzzpos == FUZZTABLE) 
@@ -709,10 +708,10 @@ R_InitBuffer
 	columnofs[i] = viewwindowx + i;
 
     // Samw with base row offset.
-    if (width == SCREENWIDTH) 
-	viewwindowy = 0; 
-    else 
-	viewwindowy = (SCREENHEIGHT-SBARHEIGHT-height) >> 1; 
+    if (width == SCREENWIDTH)
+	viewwindowy = 0;
+    else
+	viewwindowy = (SCREENHEIGHT-SBARHEIGHT*hires-height) >> 1;
 
     // Preclaculate all row offsets.
     for (i=0 ; i<height ; i++) 
@@ -743,72 +742,63 @@ void R_FillBackScreen (void)
     char	name2[] = "GRNROCK";	
 
     char*	name;
-	
-    if (scaledviewwidth == 320)
+
+    // 3D view fills the whole width -> no border needed.
+    if (scaledviewwidth == SCREENWIDTH)
 	return;
-	
+
     if ( gamemode == commercial)
 	name = name2;
     else
 	name = name1;
-    
-    src = W_CacheLumpName (name, PU_CACHE); 
-    dest = screens[1]; 
-	 
-    for (y=0 ; y<SCREENHEIGHT-SBARHEIGHT ; y++) 
-    { 
-	for (x=0 ; x<SCREENWIDTH/64 ; x++) 
-	{ 
-	    memcpy (dest, src+((y&63)<<6), 64); 
-	    dest += 64; 
-	} 
 
-	if (SCREENWIDTH&63) 
-	{ 
-	    memcpy (dest, src+((y&63)<<6), SCREENWIDTH&63); 
-	    dest += (SCREENWIDTH&63); 
-	} 
-    } 
-	
-    patch = W_CacheLumpName ("brdr_t",PU_CACHE);
+    // Tile the flat across the full back screen (raw, at internal resolution).
+    src = W_CacheLumpName (name, PU_CACHE);
+    dest = screens[1];
 
-    for (x=0 ; x<scaledviewwidth ; x+=8)
-	V_DrawPatch (viewwindowx+x,viewwindowy-8,1,patch);
-    patch = W_CacheLumpName ("brdr_b",PU_CACHE);
+    for (y=0 ; y<SCREENHEIGHT-SBARHEIGHT*hires ; y++)
+    {
+	for (x=0 ; x<SCREENWIDTH/64 ; x++)
+	{
+	    memcpy (dest, src+((y&63)<<6), 64);
+	    dest += 64;
+	}
 
-    for (x=0 ; x<scaledviewwidth ; x+=8)
-	V_DrawPatch (viewwindowx+x,viewwindowy+viewheight,1,patch);
-    patch = W_CacheLumpName ("brdr_l",PU_CACHE);
+	if (SCREENWIDTH&63)
+	{
+	    memcpy (dest, src+((y&63)<<6), SCREENWIDTH&63);
+	    dest += (SCREENWIDTH&63);
+	}
+    }
 
-    for (y=0 ; y<viewheight ; y+=8)
-	V_DrawPatch (viewwindowx-8,viewwindowy+y,1,patch);
-    patch = W_CacheLumpName ("brdr_r",PU_CACHE);
+    // The border edge patches are drawn through the scaling V_DrawPatch, so
+    // use the view rectangle expressed in base 320x200 coordinates.
+    {
+	int	vx = viewwindowx / hires;
+	int	vy = viewwindowy / hires;
+	int	vw = scaledviewwidth / hires;
+	int	vh = viewheight / hires;
 
-    for (y=0 ; y<viewheight ; y+=8)
-	V_DrawPatch (viewwindowx+scaledviewwidth,viewwindowy+y,1,patch);
+	patch = W_CacheLumpName ("brdr_t",PU_CACHE);
+	for (x=0 ; x<vw ; x+=8)
+	    V_DrawPatch (vx+x,vy-8,1,patch);
+	patch = W_CacheLumpName ("brdr_b",PU_CACHE);
+	for (x=0 ; x<vw ; x+=8)
+	    V_DrawPatch (vx+x,vy+vh,1,patch);
+	patch = W_CacheLumpName ("brdr_l",PU_CACHE);
+	for (y=0 ; y<vh ; y+=8)
+	    V_DrawPatch (vx-8,vy+y,1,patch);
+	patch = W_CacheLumpName ("brdr_r",PU_CACHE);
+	for (y=0 ; y<vh ; y+=8)
+	    V_DrawPatch (vx+vw,vy+y,1,patch);
 
-
-    // Draw beveled edge. 
-    V_DrawPatch (viewwindowx-8,
-		 viewwindowy-8,
-		 1,
-		 W_CacheLumpName ("brdr_tl",PU_CACHE));
-    
-    V_DrawPatch (viewwindowx+scaledviewwidth,
-		 viewwindowy-8,
-		 1,
-		 W_CacheLumpName ("brdr_tr",PU_CACHE));
-    
-    V_DrawPatch (viewwindowx-8,
-		 viewwindowy+viewheight,
-		 1,
-		 W_CacheLumpName ("brdr_bl",PU_CACHE));
-    
-    V_DrawPatch (viewwindowx+scaledviewwidth,
-		 viewwindowy+viewheight,
-		 1,
-		 W_CacheLumpName ("brdr_br",PU_CACHE));
-} 
+	// Draw beveled edge.
+	V_DrawPatch (vx-8, vy-8, 1, W_CacheLumpName ("brdr_tl",PU_CACHE));
+	V_DrawPatch (vx+vw, vy-8, 1, W_CacheLumpName ("brdr_tr",PU_CACHE));
+	V_DrawPatch (vx-8, vy+vh, 1, W_CacheLumpName ("brdr_bl",PU_CACHE));
+	V_DrawPatch (vx+vw, vy+vh, 1, W_CacheLumpName ("brdr_br",PU_CACHE));
+    }
+}
  
 
 //
@@ -850,8 +840,8 @@ void R_DrawViewBorder (void)
     if (scaledviewwidth == SCREENWIDTH) 
 	return; 
   
-    top = ((SCREENHEIGHT-SBARHEIGHT)-viewheight)/2; 
-    side = (SCREENWIDTH-scaledviewwidth)/2; 
+    top = ((SCREENHEIGHT-SBARHEIGHT*hires)-viewheight)/2;
+    side = (SCREENWIDTH-scaledviewwidth)/2;
  
     // copy top and one line of left side 
     R_VideoErase (0, top*SCREENWIDTH+side); 
