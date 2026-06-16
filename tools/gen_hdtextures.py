@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# Pack the DOOM2-relevant HD wall/flat textures from hd_textures.pk3 into a WAD
-# (one PNG lump per texture/flat name).  Uses the GZDoom filter precedence:
-# filter/doom (common) then filter/doom.doom2 (doom2-specific overrides).
+# Pack the DOOM2-relevant HD wall/flat textures from the DHTP pack (dhtp.pk3)
+# into a WAD (one PNG lump per texture/flat name).  Uses the GZDoom filter
+# precedence: filter/doom (common) then filter/doom.doom2 (doom2 overrides).
 import os, zipfile, struct, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RUN  = os.path.join(ROOT, "..", "run")
-SRC  = os.path.join(RUN, "hd_textures.pk3")
+SRC  = os.path.join(RUN, "dhtp.pk3")
 OUT  = os.path.join(RUN, "hdtextures.wad")
 
 # later filters override earlier ones for the same texture name

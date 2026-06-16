@@ -86,7 +86,7 @@ The generator scripts live in `tools/` and expect the source packs in
 | Feature      | Source (see links below)        | Place in `run/` as                | Build with                                  | Produces            |
 |--------------|---------------------------------|-----------------------------------|---------------------------------------------|---------------------|
 | Footsteps    | zk-resources (DaZombieKiller)   | `footsteps.pk3`                   | `python tools/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
-| HD textures  | DHTP (KuriKai)                  | `hd_textures.pk3`                 | `python tools/gen_hdtextures.py`  | `run/hdtextures.wad` |
+| HD textures  | DHTP (KuriKai)                  | `dhtp.pk3`                        | `python tools/gen_hdtextures.py`  | `run/hdtextures.wad` |
 | HD sprites   | Marcelus HD sprites             | `marcelus_hd_soft.pk3`            | `python tools/gen_hdsprites.py`   | `run/hdsprites.wad`  |
 
 Sources:
@@ -96,7 +96,7 @@ Sources:
   KuriKai: [github.com/KuriKai/DHTP](https://github.com/KuriKai/DHTP/). The exact
   pack used here is the pk3 mirrored on the Wad Archive:
   [a9555fd5…pk3.gz](https://archive.org/download/wadarchive/DATA/a9.zip/a9%2F555fd5230d6010a408927837fcfcd6b3ae1eb8%2Fa9555fd5230d6010a408927837fcfcd6b3ae1eb8.pk3.gz)
-  (decompress the `.gz` to get the `.pk3`).
+  (decompress the `.gz` and put the result in `run/` as `dhtp.pk3`).
 - **HD sprites** — Marcelus HD sprites. Download hub (all variants):
   [doomworld.com/forum/topic/130371](https://www.doomworld.com/forum/topic/130371-doom-hd-sprites-and-textures-update-25824/).
   This engine renders in **software mode**, so grab the author's **"HD sprites
