@@ -382,6 +382,10 @@ int I_GetSfxLumpNum(sfxinfo_t* sfx)
 {
     char namebuf[9];
     sprintf(namebuf, "ds%s", sfx->name);
+    // Don't hard-crash on a missing sound lump (e.g. an optional add-on sound
+    // whose WAD wasn't loaded); fall back to the pistol, like getsfx() does.
+    if (W_CheckNumForName(namebuf) == -1)
+	return W_GetNumForName("dspistol");
     return W_GetNumForName(namebuf);
 }
 

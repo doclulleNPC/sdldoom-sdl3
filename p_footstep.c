@@ -40,6 +40,10 @@ extern int		snd_SfxVolume;
 // Per-player step countdown (cosmetic; not archived).
 static int		footstep_timer[MAXPLAYERS];
 
+// Whether footsteps.wad (the sound lumps) is actually loaded.
+//  -1 = not checked yet, 0 = missing (feature off), 1 = present.
+static int		fs_available = -1;
+
 // Private RNG -- must NOT be the playsim P_Random table, or demos desync.
 static unsigned int	fs_rndseed;
 
@@ -126,11 +130,28 @@ void P_PlayerFootsteps (player_t* player)
     if (ter == TER_SILENT || terrain_sounds[ter].count == 0)
 	return;
 
-    vol = (snd_SfxVolume * speed) / 256;
-    if (vol < 1)
-	vol = 1;
+    {
+	int	sfxid = terrain_sounds[ter].sfx[FS_Rand() % terrain_sounds[ter].count];
 
-    S_StartSoundAtVolume(mo,
-	terrain_sounds[ter].sfx[FS_Rand() % terrain_sounds[ter].count],
-	vol);
+	// The footstep lumps live in footsteps.wad; if it wasn't loaded they
+	// are absent.  Check once and quietly disable, rather than letting the
+	// sound layer fault (or substitute a pistol shot) on every step.
+	if (fs_available < 0)
+	{
+	    char	nb[16];
+	    snprintf(nb, sizeof(nb), "ds%s", S_sfx[sfxid].name);
+	    fs_available = (W_CheckNumForName(nb) >= 0);
+	    if (!fs_available)
+		printf("P_PlayerFootsteps: footsteps.wad not loaded;"
+		       " footstep sounds disabled.\n");
+	}
+	if (!fs_available)
+	    return;
+
+	vol = (snd_SfxVolume * speed) / 256;
+	if (vol < 1)
+	    vol = 1;
+
+	S_StartSoundAtVolume(mo, sfxid, vol);
+    }
 }
