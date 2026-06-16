@@ -2,6 +2,9 @@
 # Pack the DOOM2-relevant HD wall/flat textures from the DHTP pack (dhtp.pk3)
 # into a WAD (one PNG lump per texture/flat name).  Uses the GZDoom filter
 # precedence: filter/doom (common) then filter/doom.doom2 (doom2 overrides).
+#
+# DHTP source: https://github.com/KuriKai/DHTP  (downloads: its wiki).
+# Expects the GZDoom-format build (PNGs under filter/doom/hires/) as run/dhtp.pk3.
 import os, zipfile, struct, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))

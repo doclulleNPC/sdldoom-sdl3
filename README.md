@@ -92,11 +92,12 @@ The generator scripts live in `tools/` and expect the source packs in
 Sources:
 
 - **Footsteps** — [DaZombieKiller/zk-resources](https://github.com/DaZombieKiller/zk-resources).
-- **HD textures** — based on the DHTP (Doom High-resolution Texture Project) by
-  KuriKai: [github.com/KuriKai/DHTP](https://github.com/KuriKai/DHTP/). The exact
-  pack used here is the pk3 mirrored on the Wad Archive:
-  [a9555fd5…pk3.gz](https://archive.org/download/wadarchive/DATA/a9.zip/a9%2F555fd5230d6010a408927837fcfcd6b3ae1eb8%2Fa9555fd5230d6010a408927837fcfcd6b3ae1eb8.pk3.gz)
-  (decompress the `.gz` and put the result in `run/` as `dhtp.pk3`).
+- **HD textures** — DHTP (DOOM High-resolution Texture Project) by KuriKai et al.:
+  project & source at [github.com/KuriKai/DHTP](https://github.com/KuriKai/DHTP/),
+  downloads on the [DHTP wiki](https://github.com/KuriKai/dhtp/wiki). The
+  generator reads the **GZDoom-format** build — PNGs under `filter/doom/hires/`
+  (and `filter/doom.doom2/hires/`) — so grab that build (or assemble it from the
+  repo with `build/tex-zd.sh`) and put it in `run/` as `dhtp.pk3`.
 - **HD sprites** — Marcelus HD sprites. Download hub (all variants):
   [doomworld.com/forum/topic/130371](https://www.doomworld.com/forum/topic/130371-doom-hd-sprites-and-textures-update-25824/).
   This engine renders in **software mode**, so grab the author's **"HD sprites
