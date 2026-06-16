@@ -1378,20 +1378,34 @@ G_SaveGame
  
 void G_DoSaveGame (void) 
 { 
-    char	name[100]; 
-    char	name2[VERSIONSIZE]; 
-    char*	description; 
-    int		length; 
-    int		i; 
-	
+    extern int	numsectors, numlines;	// p_setup.c
+    char	name[100];
+    char	name2[VERSIONSIZE];
+    char*	description;
+    int		length;
+    int		i;
+    size_t	need;
+    thinker_t*	th;
+
     if (M_CheckParm("-cdrom"))
 	sprintf(name,"c:\\doomdata\\"SAVEGAMENAME"%d.dsg",savegameslot);
     else
-	sprintf (name,SAVEGAMENAME"%d.dsg",savegameslot); 
-    description = savedescription; 
-	 
-    save_p = savebuffer = screens[1]+0x4000; 
-	 
+	sprintf (name,SAVEGAMENAME"%d.dsg",savegameslot);
+    description = savedescription;
+
+    // MOD: size the save buffer to the actual level and use a dedicated
+    // allocation.  Vanilla wrote into screens[1] with a fixed 0x2c000 cap; on
+    // 64-bit the archived structs are larger (8-byte pointers), so that
+    // overflowed on busy maps.  mobj_t is the largest archived thinker, so
+    // bound every thinker by it.
+    need = SAVESTRINGSIZE + VERSIONSIZE + 64
+	 + MAXPLAYERS*sizeof(player_t)
+	 + (size_t)numsectors*16 + (size_t)numlines*40;
+    for (th = thinkercap.next ; th != &thinkercap ; th = th->next)
+	need += sizeof(mobj_t) + 16;
+    need += 4096;			// markers + PADSAVEP slack
+    save_p = savebuffer = Z_Malloc (need, PU_STATIC, NULL);
+
     memcpy (save_p, description, SAVESTRINGSIZE); 
     save_p += SAVESTRINGSIZE; 
     memset (name2,0,sizeof(name2)); 
@@ -1415,12 +1429,13 @@ void G_DoSaveGame (void)
 	 
     *save_p++ = 0x1d;		// consistancy marker 
 	 
-    length = save_p - savebuffer; 
-    if (length > SAVEGAMESIZE) 
-	I_Error ("Savegame buffer overrun"); 
-    M_WriteFile (name, savebuffer, length); 
-    gameaction = ga_nothing; 
-    savedescription[0] = 0;		 
+    length = save_p - savebuffer;
+    if ((size_t)length > need)
+	I_Error ("Savegame buffer overrun (%i > %i)", length, (int)need);
+    M_WriteFile (name, savebuffer, length);
+    Z_Free (savebuffer);
+    gameaction = ga_nothing;
+    savedescription[0] = 0;
 	 
     players[consoleplayer].message = GGSAVED; 
 
