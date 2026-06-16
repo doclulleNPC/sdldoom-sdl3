@@ -86,7 +86,7 @@ The generator scripts live in `tools/` and expect the source packs in
 | Feature      | Source (see links below)        | Place in `run/` as                | Build with                                  | Produces            |
 |--------------|---------------------------------|-----------------------------------|---------------------------------------------|---------------------|
 | Footsteps    | zk-resources (DaZombieKiller)   | `footsteps.pk3`                   | `python tools/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
-| HD textures  | DHTP (KuriKai)                  | `dhtp.pk3`                        | `python tools/gen_hdtextures.py`  | `run/hdtextures.wad` |
+| HD textures  | DHTP (KuriKai)                  | `zdoom-dhtp-*.pk3` (or `dhtp.pk3`) | `python tools/gen_hdtextures.py`  | `run/hdtextures.wad` |
 | HD sprites   | Marcelus HD sprites             | `marcelus_hd_soft.pk3`            | `python tools/gen_hdsprites.py`   | `run/hdsprites.wad`  |
 
 Sources:
@@ -95,9 +95,11 @@ Sources:
 - **HD textures** — DHTP (DOOM High-resolution Texture Project) by KuriKai et al.:
   project & source at [github.com/KuriKai/DHTP](https://github.com/KuriKai/DHTP/),
   downloads on the [DHTP wiki](https://github.com/KuriKai/dhtp/wiki). The
-  generator reads the **GZDoom-format** build — PNGs under `filter/doom/hires/`
-  (and `filter/doom.doom2/hires/`) — so grab that build (or assemble it from the
-  repo with `build/tex-zd.sh`) and put it in `run/` as `dhtp.pk3`.
+  generator reads the **GZDoom/ZDoom-format** build — PNGs under
+  `filter/doom/hires/` (and `filter/doom.doom2/hires/`). That download is named
+  e.g. `zdoom-dhtp-20180514.pk3`; drop it in `run/` as-is (the generator accepts
+  any `zdoom-dhtp-*.pk3`, or a plain `dhtp.pk3`). You can also assemble the build
+  from the repo with `build/tex-zd.sh`.
 - **HD sprites** — Marcelus HD sprites. Download hub (all variants):
   [doomworld.com/forum/topic/130371](https://www.doomworld.com/forum/topic/130371-doom-hd-sprites-and-textures-update-25824/).
   This engine renders in **software mode**, so grab the author's **"HD sprites

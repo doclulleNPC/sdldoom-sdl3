@@ -4,13 +4,18 @@
 # precedence: filter/doom (common) then filter/doom.doom2 (doom2 overrides).
 #
 # DHTP source: https://github.com/KuriKai/DHTP  (downloads: its wiki).
-# Expects the GZDoom-format build (PNGs under filter/doom/hires/) as run/dhtp.pk3.
-import os, zipfile, struct, sys
+# Expects the GZDoom/ZDoom-format build (PNGs under filter/doom/hires/).  That
+# download is named e.g. zdoom-dhtp-20180514.pk3; we accept any zdoom-dhtp-*.pk3
+# in run/, or a plain dhtp.pk3.
+import os, zipfile, struct, sys, glob
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RUN  = os.path.join(ROOT, "..", "run")
-SRC  = os.path.join(RUN, "dhtp.pk3")
+_cands = sorted(glob.glob(os.path.join(RUN, "zdoom-dhtp-*.pk3")), reverse=True) \
+       + [os.path.join(RUN, "dhtp.pk3")]
+SRC  = next((p for p in _cands if os.path.exists(p)), _cands[-1])
 OUT  = os.path.join(RUN, "hdtextures.wad")
+print("source:", os.path.basename(SRC))
 
 # later filters override earlier ones for the same texture name
 FILTERS = ["filter/doom/hires/", "filter/doom.doom2/hires/"]

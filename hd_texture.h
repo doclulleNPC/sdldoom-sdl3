@@ -3,7 +3,7 @@
 //
 // DESCRIPTION:
 //	HD (truecolor) wall-texture and flat replacements.
-//	Reads run/hdtextures.wad (built from the DHTP pack dhtp.pk3 by
+//	Reads run/hdtextures.wad (built from the DHTP texture pack by
 //	tools/gen_hdtextures.py), streaming lumps from disk and
 //	decoding on demand via stb_image.  Results are cached per texture/flat
 //	index for the renderer (r_segs.c / r_plane.c).
