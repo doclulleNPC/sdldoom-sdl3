@@ -143,6 +143,23 @@ void I_CaptureTrueColorView (void)
 // Fake mouse handling.
 boolean		grabMouse;
 
+extern boolean	consoleactive;		// c_console.h
+static int	window_focused = 1;
+
+// Grab (relative-motion) the mouse only while actually playing -- release it
+// when the menu or console is up (so the OS cursor is usable) or we lose focus.
+static void I_ApplyMouseGrab (void)
+{
+    static int	applied = -1;
+    int		want = grabMouse && window_focused && !menuactive && !consoleactive;
+
+    if (window && want != applied)
+    {
+	SDL_SetWindowRelativeMouseMode (window, want ? true : false);
+	applied = want;
+    }
+}
+
 
 //
 //  Translates the key
@@ -286,14 +303,13 @@ void I_GetEvent(SDL_Event *Event)
 	break;
 
       case SDL_EVENT_WINDOW_FOCUS_GAINED:
-	// Re-grab when we regain focus (e.g. after alt-tab).
-	if (grabMouse)
-	    SDL_SetWindowRelativeMouseMode(window, true);
+	window_focused = 1;
+	I_ApplyMouseGrab();		// re-grab (e.g. after alt-tab)
 	break;
 
       case SDL_EVENT_WINDOW_FOCUS_LOST:
-	// Let go of the mouse so the user can leave the window.
-	SDL_SetWindowRelativeMouseMode(window, false);
+	window_focused = 0;
+	I_ApplyMouseGrab();		// let go so the user can leave the window
 	break;
 
       case SDL_EVENT_QUIT:
@@ -327,6 +343,8 @@ void I_UpdateNoBlit (void)
 //
 void I_FinishUpdate (void)
 {
+    // Track menu/console state: grab while playing, release in the menu.
+    I_ApplyMouseGrab();
 
     static int	lasttic;
     int		tics;
@@ -638,8 +656,7 @@ void I_InitGraphics(void)
     I_CreateTexture();
 
     SDL_HideCursor();
-    if (grabMouse)
-	SDL_SetWindowRelativeMouseMode(window, true);
+    I_ApplyMouseGrab();		// grab now (menu not up yet)
 
     // screens[0..3] are allocated by V_Init at the maximum resolution; the
     // 3D view, HUD etc. render into screens[0] at the current SCREENWIDTH.
