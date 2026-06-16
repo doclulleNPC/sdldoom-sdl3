@@ -33,6 +33,9 @@ rcsid[] = "$Id: p_user.c,v 1.3 1997/01/28 22:08:29 b1 Exp $";
 
 #include "p_local.h"
 
+#include "s_sound.h"
+#include "sounds.h"
+
 #include "doomstat.h"
 
 
@@ -174,9 +177,13 @@ void P_MovePlayer (player_t* player)
     onground = (player->mo->z <= player->mo->floorz);
 
     // MOD: jump.  Quake-style: while on the ground, the jump button gives an
-    // upward impulse (hold it to bunny-hop on landing).
+    // upward impulse (hold it to bunny-hop on landing).  Grunt ("ouch") on the
+    // way up.
     if ((cmd->buttons & BT_JUMP) && onground)
+    {
 	player->mo->momz = JUMPVELOCITY;
+	S_StartSound (player->mo, sfx_oof);
+    }
 
     if (cmd->forwardmove && onground)
 	P_Thrust (player, player->mo->angle, cmd->forwardmove*2048);
