@@ -46,7 +46,10 @@ rcsid[] = "$Id: p_user.c,v 1.3 1997/01/28 22:08:29 b1 Exp $";
 //
 
 // 16 pixels of bob
-#define MAXBOB	0x100000	
+#define MAXBOB	0x100000
+
+// MOD: jump impulse (map units per tic, 16.16 fixed) -- Quake-ish hop height.
+#define JUMPVELOCITY	(8*FRACUNIT)
 
 boolean		onground;
 
@@ -143,6 +146,19 @@ void P_CalcHeight (player_t* player)
 
 
 //
+// P_PlayerLookSlope
+// MOD: convert a player's free-look pitch into an aiming slope (16.16 fixed).
+// 160 = BASE half-screen width = focal length, so this is tan(pitch).
+//
+fixed_t P_PlayerLookSlope (mobj_t* mo)
+{
+    if (!mod_freelook || !mo->player)
+	return 0;
+    return (mo->player->lookdir << FRACBITS) / 160;
+}
+
+
+//
 // P_MovePlayer
 //
 void P_MovePlayer (player_t* player)
@@ -156,7 +172,12 @@ void P_MovePlayer (player_t* player)
     // Do not let the player control movement
     //  if not onground.
     onground = (player->mo->z <= player->mo->floorz);
-	
+
+    // MOD: jump.  Quake-style: while on the ground, the jump button gives an
+    // upward impulse (hold it to bunny-hop on landing).
+    if ((cmd->buttons & BT_JUMP) && onground)
+	player->mo->momz = JUMPVELOCITY;
+
     if (cmd->forwardmove && onground)
 	P_Thrust (player, player->mo->angle, cmd->forwardmove*2048);
     

@@ -161,7 +161,11 @@ typedef struct player_s
     pspdef_t		psprites[NUMPSPRITES];
 
     // True if secret level has been done.
-    boolean		didsecret;	
+    boolean		didsecret;
+
+    // MOD: free-look pitch, in BASE-resolution (200-tall) pixels of horizon
+    // shift.  Positive = looking up.  0 = level (vanilla).
+    int			lookdir;
 
 } player_t;
 

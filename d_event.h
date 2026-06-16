@@ -80,6 +80,9 @@ typedef enum
     BT_SPECIAL		= 128,
     BT_SPECIALMASK	= 3,
     
+    // MOD: jump (uses the one spare bit in the buttons byte).
+    BT_JUMP		= 64,
+
     // Flag, weapon change pending.
     // If true, the next 3 bits hold weapon num.
     BT_CHANGE		= 4,

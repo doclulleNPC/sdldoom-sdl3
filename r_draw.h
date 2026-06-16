@@ -105,6 +105,9 @@ void R_FillBackScreen (void);
 // If the view size is not full screen, draws a border around it.
 void R_DrawViewBorder (void);
 
+// MOD: draw the centre crosshair (Options -> Mod) over the rendered view.
+void R_DrawCrosshair (void);
+
 
 
 #endif

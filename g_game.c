@@ -156,8 +156,17 @@ int             key_fire;
 int		key_use;
 int		key_strafe;
 int		key_speed;
+int		key_jump;	// MOD: jump key
 
 boolean		autorun;	// key_speed is a toggle: persistent run state
+
+// MOD feature toggles (see doomstat.h); persisted via m_misc.c defaults[].
+int		mod_jump;
+int		mod_freelook;
+int		mod_crosshair;
+
+// MOD: clamp for the free-look pitch (BASE-resolution horizon-shift pixels).
+#define LOOKDIRMAX	56
 
 int             mousebfire;
 int             mousebstrafe; 
@@ -335,12 +344,16 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	|| joybuttons[joybfire]) 
 	cmd->buttons |= BT_ATTACK; 
  
-    if (gamekeydown[key_use] || joybuttons[joybuse] ) 
-    { 
+    if (gamekeydown[key_use] || joybuttons[joybuse] )
+    {
 	cmd->buttons |= BT_USE;
-	// clear double clicks if hit use button 
-	dclicks = 0;                   
-    } 
+	// clear double clicks if hit use button
+	dclicks = 0;
+    }
+
+    // MOD: jump
+    if (mod_jump && gamekeydown[key_jump])
+	cmd->buttons |= BT_JUMP;
 
     // chainsaw overrides 
     for (i=0 ; i<NUMWEAPONS-1 ; i++)        
@@ -406,13 +419,24 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	} 
     } 
  
-    forward += mousey; 
-    if (strafe) 
-	side += mousex*2; 
-    else 
-	cmd->angleturn -= mousex*0x8; 
+    // MOD: with free-look, vertical mouse aims the view instead of moving
+    // forward/back.  Otherwise it drives forward movement (vanilla).
+    if (mod_freelook)
+    {
+	player_t* plr = &players[consoleplayer];
+	plr->lookdir += mousey >> 3;
+	if (plr->lookdir > LOOKDIRMAX)  plr->lookdir = LOOKDIRMAX;
+	if (plr->lookdir < -LOOKDIRMAX) plr->lookdir = -LOOKDIRMAX;
+    }
+    else
+	forward += mousey;
 
-    mousex = mousey = 0; 
+    if (strafe)
+	side += mousex*2;
+    else
+	cmd->angleturn -= mousex*0x8;
+
+    mousex = mousey = 0;
 	 
     if (forward > MAXPLMOVE) 
 	forward = MAXPLMOVE; 

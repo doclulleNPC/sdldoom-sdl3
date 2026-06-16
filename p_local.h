@@ -87,6 +87,7 @@ void P_DropWeapon (player_t* player);
 // P_USER
 //
 void	P_PlayerThink (player_t* player);
+fixed_t	P_PlayerLookSlope (mobj_t* mo);	// MOD: free-look aim slope
 
 
 //

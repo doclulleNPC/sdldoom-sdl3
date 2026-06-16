@@ -48,6 +48,7 @@ rcsid[] = "$Id: m_menu.c,v 1.7 1997/02/03 22:45:10 b1 Exp $";
 #include "g_game.h"
 
 #include "m_argv.h"
+#include "m_misc.h"		// M_SaveDefaults (persist menu changes immediately)
 
 #include "s_sound.h"
 
@@ -205,6 +206,12 @@ void M_Keys(int choice);
 void M_KeyBind(int choice);
 void M_DrawKeys(void);
 
+void M_Mod(int choice);
+void M_ModJump(int choice);
+void M_ModFreelook(int choice);
+void M_ModCrosshair(int choice);
+void M_DrawMod(void);
+
 void M_FinishReadThis(int choice);
 void M_LoadSelect(int choice);
 void M_SaveSelect(int choice);
@@ -354,6 +361,7 @@ enum
     soundvol,
     video,
     keys,
+    mod,
     opt_end
 } options_e;
 
@@ -368,7 +376,8 @@ menuitem_t OptionsMenu[]=
     {-1,"",0},
     {1,"M_SVOL",	M_Sound,'s'},
     {1,"",		M_Video,'v'},	// text-drawn (see M_DrawOptions/M_DrawVideo)
-    {1,"",		M_Keys,'k'}	// text-drawn
+    {1,"",		M_Keys,'k'},	// text-drawn
+    {1,"",		M_Mod,'d'}	// text-drawn
 };
 
 menu_t  OptionsDef =
@@ -415,6 +424,7 @@ menu_t  VideoDef =
 extern int	key_right, key_left, key_up, key_down;
 extern int	key_strafeleft, key_straferight;
 extern int	key_fire, key_use, key_strafe, key_speed;
+extern int	key_jump;
 
 // The action being rebound (index into M_KeyVars), or -1 if none.
 static int	keyToBind = -1;
@@ -423,23 +433,23 @@ static int*	M_KeyVars[]=
 {
     &key_up, &key_down, &key_left, &key_right,
     &key_strafeleft, &key_straferight,
-    &key_fire, &key_use, &key_strafe, &key_speed
+    &key_fire, &key_use, &key_strafe, &key_speed, &key_jump
 };
 
 static char*	M_KeyLabels[]=
 {
     "Forward", "Backward", "Turn Left", "Turn Right",
-    "Strafe Left", "Strafe Right", "Fire", "Use", "Strafe", "Run"
+    "Strafe Left", "Strafe Right", "Fire", "Use", "Strafe", "Run", "Jump"
 };
 
-enum { keys_end = 10 } keys_e;		// must match the arrays above
+enum { keys_end = 11 } keys_e;		// must match the arrays above
 
 menuitem_t KeysMenu[keys_end]=
 {
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
-    {1,"",M_KeyBind,0}
+    {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}
 };
 
 menu_t  KeysDef =
@@ -449,6 +459,34 @@ menu_t  KeysDef =
     KeysMenu,
     M_DrawKeys,
     48,16,
+    0
+};
+
+//
+// MOD MENU (gameplay mod toggles: jump / free-look / crosshair)
+//
+enum
+{
+    mod_jump_item,
+    mod_freelook_item,
+    mod_crosshair_item,
+    mod_end
+} mod_e;
+
+menuitem_t ModMenu[]=
+{
+    {2,"",	M_ModJump,'j'},		// left/right or enter toggles
+    {2,"",	M_ModFreelook,'f'},
+    {2,"",	M_ModCrosshair,'c'}
+};
+
+menu_t  ModDef =
+{
+    mod_end,
+    &OptionsDef,
+    ModMenu,
+    M_DrawMod,
+    60,60,
     0
 };
 
@@ -934,6 +972,7 @@ void M_VideoRes(int choice)
     {
 	if (hires > 1) V_SetRes(hires-1);
     }
+    M_SaveDefaults();		// persist now, not just at quit
 }
 
 void M_VideoAspect(int choice)
@@ -943,11 +982,13 @@ void M_VideoAspect(int choice)
     else
 	screen_aspect = (screen_aspect+3) & 3;
     I_ApplyAspect();
+    M_SaveDefaults();		// persist now, not just at quit
 }
 
 void M_VideoFullscreen(int choice)
 {
     I_SetFullscreen(!I_GetFullscreen());
+    M_SaveDefaults();		// persist now, not just at quit
 }
 
 void M_Video(int choice)
@@ -1019,6 +1060,49 @@ void M_KeyBind(int choice)
 void M_Keys(int choice)
 {
     M_SetupNextMenu(&KeysDef);
+}
+
+//
+// MOD menu: gameplay toggles (jump / free-look / crosshair).
+//
+void M_DrawMod(void)
+{
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_jump_item, "Jumping");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_jump_item,
+		mod_jump ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_freelook_item, "Free Look");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_freelook_item,
+		mod_freelook ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_crosshair_item, "Crosshair");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_crosshair_item,
+		mod_crosshair ? "On" : "Off");
+}
+
+void M_ModJump(int choice)
+{
+    mod_jump = !mod_jump;
+    M_SaveDefaults();
+}
+
+void M_ModFreelook(int choice)
+{
+    mod_freelook = !mod_freelook;
+    if (!mod_freelook)
+	players[consoleplayer].lookdir = 0;	// recentre the view
+    M_SaveDefaults();
+}
+
+void M_ModCrosshair(int choice)
+{
+    mod_crosshair = !mod_crosshair;
+    M_SaveDefaults();
+}
+
+void M_Mod(int choice)
+{
+    M_SetupNextMenu(&ModDef);
 }
 
 void M_SfxVol(int choice)
@@ -1176,6 +1260,7 @@ void M_DrawOptions(void)
     // match the size of the graphic menu items above.
     M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*video,"Video",2);
     M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*keys,"Keys",2);
+    M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*mod,"Mod",2);
 }
 
 void M_Options(int choice)
@@ -1628,7 +1713,10 @@ boolean M_Responder (event_t* ev)
 	if (ev->type == ev_keydown)
 	{
 	    if (ev->data1 != KEY_ESCAPE)
+	    {
 		*M_KeyVars[keyToBind] = ev->data1;
+		M_SaveDefaults();	// persist the new binding now, not just at quit
+	    }
 	    keyToBind = -1;
 	    S_StartSound(NULL,sfx_pistol);
 	}

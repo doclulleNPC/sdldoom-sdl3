@@ -831,10 +831,12 @@ R_PointInSubsector
 //
 // R_SetupFrame
 //
+extern int	mod_freelook;	// MOD: doomstat.h (not included here)
+
 void R_SetupFrame (player_t* player)
-{		
+{
     int		i;
-    
+
     viewplayer = player;
     viewx = player->mo->x;
     viewy = player->mo->y;
@@ -842,7 +844,24 @@ void R_SetupFrame (player_t* player)
     extralight = player->extralight;
 
     viewz = player->viewz;
-    
+
+    // MOD: free-look.  Shift the projection's horizon (centery) by the player's
+    // pitch and rebuild the floor/ceiling slope table to match.  lookdir is in
+    // BASE-resolution pixels, so scale by hires for the real framebuffer.
+    {
+	int	look = mod_freelook ? player->lookdir * hires : 0;
+	fixed_t	dy;
+
+	centery = viewheight/2 + look;
+	centeryfrac = centery<<FRACBITS;
+	for (i=0 ; i<viewheight ; i++)
+	{
+	    dy = ((i-centery)<<FRACBITS)+FRACUNIT/2;
+	    dy = abs(dy);
+	    yslope[i] = FixedDiv ( (viewwidth<<detailshift)/2*FRACUNIT, dy);
+	}
+    }
+
     viewsin = finesine[viewangle>>ANGLETOFINESHIFT];
     viewcos = finecosine[viewangle>>ANGLETOFINESHIFT];
 	

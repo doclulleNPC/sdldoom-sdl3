@@ -178,6 +178,7 @@ extern int	key_fire;
 extern int	key_use;
 extern int	key_strafe;
 extern int	key_speed;
+extern int	key_jump;	// MOD
 
 extern int	mousebfire;
 extern int	mousebstrafe;
@@ -206,6 +207,11 @@ extern	int	numChannels;
 // video settings (i_video.c; hires is in doomdef.h)
 extern	int	screen_aspect;
 extern	int	fullscreen_mode;
+
+// MOD feature toggles (g_game.c / doomstat.h)
+extern	int	mod_jump;
+extern	int	mod_freelook;
+extern	int	mod_crosshair;
 
 
 extern char*	chat_macros[];
@@ -240,6 +246,7 @@ default_t	defaults[] =
     {"key_use",&key_use, ' '},
     {"key_strafe",&key_strafe, KEY_RALT},
     {"key_speed",&key_speed, KEY_RSHIFT},
+    {"key_jump",&key_jump, '/'},		// MOD
 
     {"use_mouse",&usemouse, 1},
     {"mouseb_fire",&mousebfire,0},
@@ -265,6 +272,11 @@ default_t	defaults[] =
     {"screen_resolution",&hires, 2},
     {"screen_aspect",&screen_aspect, 0},
     {"fullscreen",&fullscreen_mode, 0},
+
+    // MOD feature toggles (Options -> Mod).
+    {"mod_jump",&mod_jump, 0},
+    {"mod_freelook",&mod_freelook, 0},
+    {"mod_crosshair",&mod_crosshair, 0},
 
 #ifndef __BEOS__
     {"chatmacro0", (int *) &chat_macros[0], (intptr_t) HUSTR_CHATMACRO0 },

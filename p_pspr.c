@@ -616,6 +616,10 @@ void P_BulletSlope (mobj_t*	mo)
 	    bulletslope = P_AimLineAttack (mo, an, 16*64*FRACUNIT);
 	}
     }
+
+    // MOD: with free-look, shoot where you look (no vertical auto-aim).
+    if (mod_freelook && mo->player)
+	bulletslope = P_PlayerLookSlope (mo);
 }
 
 

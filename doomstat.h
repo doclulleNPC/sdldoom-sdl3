@@ -286,6 +286,11 @@ extern  int             nettics[MAXNETNODES];
 extern  ticcmd_t        netcmds[MAXPLAYERS][BACKUPTICS];
 extern	int		ticdup;
 
+// MOD feature toggles (Options -> Mod), persisted in the config file.
+extern	int		mod_jump;	// allow jumping
+extern	int		mod_freelook;	// mouse looks up/down (and aim follows)
+extern	int		mod_crosshair;	// draw a center crosshair
+
 
 
 #endif

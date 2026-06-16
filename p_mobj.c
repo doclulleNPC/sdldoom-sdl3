@@ -965,7 +965,14 @@ P_SpawnPlayerMissile
 	    slope = 0;
 	}
     }
-		
+
+    // MOD: with free-look, launch the missile where you look.
+    if (mod_freelook && source->player)
+    {
+	an = source->angle;
+	slope = P_PlayerLookSlope (source);
+    }
+
     x = source->x;
     y = source->y;
     z = source->z + 4*8*FRACUNIT;

@@ -860,8 +860,38 @@ void R_DrawViewBorder (void)
 	ofs += SCREENWIDTH; 
     } 
 
-    // ? 
-    V_MarkRect (0,0,SCREENWIDTH, SCREENHEIGHT-SBARHEIGHT); 
-} 
- 
- 
+    // ?
+    V_MarkRect (0,0,SCREENWIDTH, SCREENHEIGHT-SBARHEIGHT);
+}
+
+
+//
+// R_DrawCrosshair
+// MOD: plot a small '+' at the centre of the 3D view (Options -> Mod).
+// Drawn straight into the 8-bit framebuffer after the view is rendered.
+//
+#define XHAIR_COLOR	4		// bright grey in the DOOM palette
+
+void R_DrawCrosshair (void)
+{
+    int		cx, cy, i, len, gap;
+    byte*	fb;
+
+    if (!mod_crosshair)
+	return;
+
+    cx  = viewwindowx + scaledviewwidth/2;
+    cy  = viewwindowy + viewheight/2;
+    len = 4*hires;
+    gap = 2*hires;
+    fb  = screens[0];
+
+    for (i=gap ; i<=len ; i++)
+    {
+	fb[cy*SCREENWIDTH + (cx-i)] = XHAIR_COLOR;	// left
+	fb[cy*SCREENWIDTH + (cx+i)] = XHAIR_COLOR;	// right
+	fb[(cy-i)*SCREENWIDTH + cx] = XHAIR_COLOR;	// up
+	fb[(cy+i)*SCREENWIDTH + cx] = XHAIR_COLOR;	// down
+    }
+}
+
