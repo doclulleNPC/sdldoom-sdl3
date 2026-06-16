@@ -275,6 +275,16 @@ void I_GetEvent(SDL_Event *Event)
 	D_PostEvent(&event);
 	break;
 
+      case SDL_EVENT_MOUSE_WHEEL:
+	// MOD: wheel up/down -> next/prev weapon, as synthetic key presses.
+	if (Event->wheel.y != 0)
+	{
+	    event.type = ev_keydown;
+	    event.data1 = (Event->wheel.y > 0) ? KEY_MWHEELUP : KEY_MWHEELDOWN;
+	    D_PostEvent(&event);
+	}
+	break;
+
       case SDL_EVENT_WINDOW_FOCUS_GAINED:
 	// Re-grab when we regain focus (e.g. after alt-tab).
 	if (grabMouse)

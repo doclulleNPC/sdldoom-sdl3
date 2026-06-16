@@ -179,6 +179,8 @@ extern int	key_use;
 extern int	key_strafe;
 extern int	key_speed;
 extern int	key_jump;	// MOD
+extern int	key_prevweapon;	// MOD
+extern int	key_nextweapon;	// MOD
 
 extern int	mousebfire;
 extern int	mousebstrafe;
@@ -242,21 +244,23 @@ default_t	defaults[] =
 
     {"key_right",&key_right, KEY_RIGHTARROW},
     {"key_left",&key_left, KEY_LEFTARROW},
-    {"key_up",&key_up, KEY_UPARROW},
-    {"key_down",&key_down, KEY_DOWNARROW},
-    {"key_strafeleft",&key_strafeleft, ','},
-    {"key_straferight",&key_straferight, '.'},
+    {"key_up",&key_up, 'w'},			// WASD layout
+    {"key_down",&key_down, 's'},
+    {"key_strafeleft",&key_strafeleft, 'a'},
+    {"key_straferight",&key_straferight, 'd'},
 
     {"key_fire",&key_fire, KEY_RCTRL},
-    {"key_use",&key_use, ' '},
+    {"key_use",&key_use, 'e'},
     {"key_strafe",&key_strafe, KEY_RALT},
-    {"key_speed",&key_speed, KEY_RSHIFT},
-    {"key_jump",&key_jump, '/'},		// MOD
+    {"key_speed",&key_speed, KEY_RSHIFT},	// run toggle
+    {"key_jump",&key_jump, ' '},		// MOD: space
+    {"key_prevweapon",&key_prevweapon, '['},	// MOD
+    {"key_nextweapon",&key_nextweapon, ']'},	// MOD
 
     {"use_mouse",&usemouse, 1},
-    {"mouseb_fire",&mousebfire,0},
-    {"mouseb_strafe",&mousebstrafe,1},
-    {"mouseb_forward",&mousebforward,2},
+    {"mouseb_fire",&mousebfire,0},		// left button = fire
+    {"mouseb_strafe",&mousebstrafe,1},		// middle button = strafe
+    {"mouseb_forward",&mousebforward,-1},	// right button (mouse2) = unused
 
     {"use_joystick",&usejoystick, 0},
     {"joyb_fire",&joybfire,0},

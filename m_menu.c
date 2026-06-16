@@ -431,6 +431,7 @@ extern int	key_right, key_left, key_up, key_down;
 extern int	key_strafeleft, key_straferight;
 extern int	key_fire, key_use, key_strafe, key_speed;
 extern int	key_jump;
+extern int	key_prevweapon, key_nextweapon;
 
 // The action being rebound (index into M_KeyVars), or -1 if none.
 static int	keyToBind = -1;
@@ -439,20 +440,22 @@ static int*	M_KeyVars[]=
 {
     &key_up, &key_down, &key_left, &key_right,
     &key_strafeleft, &key_straferight,
-    &key_fire, &key_use, &key_strafe, &key_speed, &key_jump
+    &key_fire, &key_use, &key_strafe, &key_speed, &key_jump,
+    &key_prevweapon, &key_nextweapon
 };
 
 static char*	M_KeyLabels[]=
 {
     "Forward", "Backward", "Turn Left", "Turn Right",
-    "Strafe Left", "Strafe Right", "Fire", "Use", "Strafe", "Run", "Jump"
+    "Strafe Left", "Strafe Right", "Fire", "Use", "Strafe", "Run", "Jump",
+    "Prev Weapon", "Next Weapon"
 };
 
-enum { keys_end = 11 } keys_e;		// number of rebindable actions (M_KeyVars)
+enum { keys_end = 13 } keys_e;		// number of rebindable actions (M_KeyVars)
 
 // The Controls menu = a mouse-speed slider (item 0) then the key binds.
 #define CTRL_ITEMS	(keys_end+1)
-#define CTRL_LH		13	// tighter line height so 12 rows clear the status bar
+#define CTRL_LH		11	// tighter line height so all rows clear the status bar
 
 menuitem_t KeysMenu[CTRL_ITEMS]=
 {
@@ -460,7 +463,8 @@ menuitem_t KeysMenu[CTRL_ITEMS]=
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
-    {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}
+    {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
+    {1,"",M_KeyBind,0}
 };
 
 menu_t  KeysDef =
@@ -469,7 +473,7 @@ menu_t  KeysDef =
     &OptionsDef,
     KeysMenu,
     M_DrawKeys,
-    48,8,
+    48,6,
     0
 };
 

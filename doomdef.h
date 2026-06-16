@@ -287,6 +287,11 @@ typedef enum
 
 #define KEY_LALT	KEY_RALT
 
+// MOD: synthetic keys for the mouse wheel (posted as ev_keydown by i_video.c;
+// free codes below KEY_RSHIFT, < NUMKEYS).
+#define KEY_MWHEELUP	0xb0
+#define KEY_MWHEELDOWN	0xb1
+
 
 
 // DOOM basic types (boolean),

@@ -157,8 +157,14 @@ int		key_use;
 int		key_strafe;
 int		key_speed;
 int		key_jump;	// MOD: jump key
+int		key_prevweapon;	// MOD: cycle to previous weapon
+int		key_nextweapon;	// MOD: cycle to next weapon
 
 boolean		autorun;	// key_speed is a toggle: persistent run state
+
+// MOD: accumulated weapon-cycle requests (+next / -prev) from keys + wheel,
+// consumed in G_BuildTiccmd.
+int		weaponcycle;
 
 // MOD feature toggles (see doomstat.h); persisted via m_misc.c defaults[].
 int		mod_jump;
@@ -244,13 +250,47 @@ int G_CmdChecksum (ticcmd_t* cmd)
  
 
 //
+// G_CycleWeapon
+// MOD: next/prev owned weapon for the prev/next-weapon controls.  Cycle order
+// groups melee and the two shotguns.  Skips unowned weapons and the SSG outside
+// commercial DOOM.
+//
+static const weapontype_t weaponcycleorder[NUMWEAPONS] =
+{
+    wp_fist, wp_chainsaw, wp_pistol, wp_shotgun, wp_supershotgun,
+    wp_chaingun, wp_missile, wp_plasma, wp_bfg
+};
+
+static weapontype_t G_CycleWeapon (player_t* plr, weapontype_t cur, int dir)
+{
+    int		i, idx = 0;
+
+    for (i = 0; i < NUMWEAPONS; i++)
+	if (weaponcycleorder[i] == cur) { idx = i; break; }
+
+    for (i = 0; i < NUMWEAPONS; i++)
+    {
+	weapontype_t w;
+	idx = (idx + dir + NUMWEAPONS) % NUMWEAPONS;
+	w = weaponcycleorder[idx];
+	if (!plr->weaponowned[w])
+	    continue;
+	if (w == wp_supershotgun && gamemode != commercial)
+	    continue;
+	return w;
+    }
+    return cur;
+}
+
+
+//
 // G_BuildTiccmd
 // Builds a ticcmd from all of the available inputs
-// or reads it from the demo buffer. 
-// If recording a demo, write it out 
-// 
-void G_BuildTiccmd (ticcmd_t* cmd) 
-{ 
+// or reads it from the demo buffer.
+// If recording a demo, write it out
+//
+void G_BuildTiccmd (ticcmd_t* cmd)
+{
     int		i; 
     boolean	strafe;
     boolean	bstrafe; 
@@ -365,35 +405,57 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	{ 
 	    cmd->buttons |= BT_CHANGE; 
 	    cmd->buttons |= i<<BT_WEAPONSHIFT; 
-	    break; 
+	    break;
 	}
-    
-    // mouse
-    if (mousebuttons[mousebforward]) 
+
+    // MOD: prev/next weapon cycle (keys + mouse wheel).  Set pendingweapon
+    // directly so all 9 weapons incl. the SSG are reachable (BT_CHANGE's 3-bit
+    // field can't encode weapon 8).  Single-player only.
+    if (weaponcycle)
+    {
+	player_t* plr = &players[consoleplayer];
+	if (gamestate == GS_LEVEL && plr->mo && plr->playerstate == PST_LIVE)
+	{
+	    int		dir = weaponcycle > 0 ? 1 : -1;
+	    int		steps = weaponcycle > 0 ? weaponcycle : -weaponcycle;
+	    weapontype_t w = (plr->pendingweapon < NUMWEAPONS)
+			     ? plr->pendingweapon : plr->readyweapon;
+	    while (steps--)
+		w = G_CycleWeapon(plr, w, dir);
+	    plr->pendingweapon = w;
+	}
+	weaponcycle = 0;
+    }
+
+    // mouse (forward/use on a mouse button -- skipped when unbound, i.e. -1)
+    if (mousebforward >= 0)
+    {
+    if (mousebuttons[mousebforward])
 	forward += forwardmove[speed];
-    
+
     // forward double click
-    if (mousebuttons[mousebforward] != dclickstate && dclicktime > 1 ) 
-    { 
-	dclickstate = mousebuttons[mousebforward]; 
-	if (dclickstate) 
-	    dclicks++; 
-	if (dclicks == 2) 
-	{ 
-	    cmd->buttons |= BT_USE; 
-	    dclicks = 0; 
-	} 
-	else 
-	    dclicktime = 0; 
-    } 
-    else 
-    { 
-	dclicktime += ticdup; 
-	if (dclicktime > 20) 
-	{ 
-	    dclicks = 0; 
-	    dclickstate = 0; 
-	} 
+    if (mousebuttons[mousebforward] != dclickstate && dclicktime > 1 )
+    {
+	dclickstate = mousebuttons[mousebforward];
+	if (dclickstate)
+	    dclicks++;
+	if (dclicks == 2)
+	{
+	    cmd->buttons |= BT_USE;
+	    dclicks = 0;
+	}
+	else
+	    dclicktime = 0;
+    }
+    else
+    {
+	dclicktime += ticdup;
+	if (dclicktime > 20)
+	{
+	    dclicks = 0;
+	    dclickstate = 0;
+	}
+    }
     }
     
     // strafe double click
@@ -602,6 +664,14 @@ boolean G_Responder (event_t* ev)
 	    autorun = !autorun;
 	    players[consoleplayer].message = autorun ? "Always Run ON" : "Always Run OFF";
 	}
+	// MOD: next/prev weapon -- rebindable keys (edge-triggered) and the
+	// mouse wheel (one event per notch).  Accumulated; G_BuildTiccmd applies.
+	if (ev->data1 == KEY_MWHEELUP
+	    || (ev->data1 == key_nextweapon && !gamekeydown[key_nextweapon]))
+	    weaponcycle++;
+	if (ev->data1 == KEY_MWHEELDOWN
+	    || (ev->data1 == key_prevweapon && !gamekeydown[key_prevweapon]))
+	    weaponcycle--;
 	if (ev->data1 <NUMKEYS)
 	    gamekeydown[ev->data1] = true;
 	return true;    // eat key down events
