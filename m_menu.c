@@ -2130,8 +2130,18 @@ boolean M_Responder (event_t* ev)
 		
       case KEY_ESCAPE:
 	currentMenu->lastOn = itemOn;
-	M_ClearMenus ();
-	S_StartSound(NULL,sfx_swtchx);
+	if (currentMenu->prevMenu)
+	{
+	    // In a submenu: step up one level rather than closing everything.
+	    currentMenu = currentMenu->prevMenu;
+	    itemOn = currentMenu->lastOn;
+	    S_StartSound(NULL,sfx_swtchn);
+	}
+	else
+	{
+	    M_ClearMenus ();
+	    S_StartSound(NULL,sfx_swtchx);
+	}
 	return true;
 		
       case KEY_BACKSPACE:
