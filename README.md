@@ -83,11 +83,22 @@ The generator scripts live in `tools_footsteps/` and expect the source packs in
 `run/`. They require **Python 3**; the footsteps generator additionally needs
 **`ffmpeg`** on `PATH` (it transcodes the source audio to DMX format).
 
-| Feature      | Get the source pack from                                         | Place in `run/` as                | Build with                                  | Produces            |
-|--------------|------------------------------------------------------------------|-----------------------------------|---------------------------------------------|---------------------|
-| Footsteps    | [DaZombieKiller/zk-resources](https://github.com/DaZombieKiller/zk-resources) | `footsteps.pk3`                   | `python tools_footsteps/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
-| HD textures  | [KuriKai/DHTP](https://github.com/KuriKai/DHTP/)                 | `hd_textures.pk3`                 | `python tools_footsteps/gen_hdtextures.py`  | `run/hdtextures.wad` |
-| HD sprites   | _(your GZDoom HD weapons / items packs — TODO: add source URL)_  | `hd_weapons.pk3`, `hd_items.pk3`  | `python tools_footsteps/gen_hdsprites.py`   | `run/hdsprites.wad`  |
+| Feature      | Source (see links below)        | Place in `run/` as                | Build with                                  | Produces            |
+|--------------|---------------------------------|-----------------------------------|---------------------------------------------|---------------------|
+| Footsteps    | zk-resources (DaZombieKiller)   | `footsteps.pk3`                   | `python tools_footsteps/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
+| HD textures  | DHTP (KuriKai)                  | `hd_textures.pk3`                 | `python tools_footsteps/gen_hdtextures.py`  | `run/hdtextures.wad` |
+| HD sprites   | HD weapons / items (Marcelus)   | `hd_weapons.pk3`, `hd_items.pk3`  | `python tools_footsteps/gen_hdsprites.py`   | `run/hdsprites.wad`  |
+
+Sources:
+
+- **Footsteps** — [DaZombieKiller/zk-resources](https://github.com/DaZombieKiller/zk-resources).
+- **HD textures** — based on the DHTP (Doom High-resolution Texture Project) by
+  KuriKai: [github.com/KuriKai/DHTP](https://github.com/KuriKai/DHTP/). The exact
+  pack used here is the pk3 mirrored on the Wad Archive:
+  [a9555fd5…pk3.gz](https://archive.org/download/wadarchive/DATA/a9.zip/a9%2F555fd5230d6010a408927837fcfcd6b3ae1eb8%2Fa9555fd5230d6010a408927837fcfcd6b3ae1eb8.pk3.gz)
+  (decompress the `.gz` to get the `.pk3`).
+- **HD sprites** — HD weapon and item sprites by **Marcelus**. _(TODO: add the
+  download URL — the link didn't come through.)_
 
 Notes:
 
