@@ -1,0 +1,12 @@
+# Normalize all text files to LF in the repository.
+# Git auto-detects text vs binary; detected text files are stored and
+# checked out with LF line endings regardless of platform.
+* text=auto eol=lf
+
+# Explicit binary types (never touch line endings)
+*.png binary
+*.wad binary
+*.dll binary
+*.exe binary
+*.lib binary
+*.ico binary
