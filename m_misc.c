@@ -213,6 +213,10 @@ extern	int	mod_jump;
 extern	int	mod_freelook;
 extern	int	mod_crosshair;
 extern	int	mod_smooth;
+extern	int	mod_footsteps;
+extern	int	mod_fullcolor;
+extern	int	mod_hdsprites;
+extern	int	mod_hdtextures;
 
 
 extern char*	chat_macros[];
@@ -279,6 +283,10 @@ default_t	defaults[] =
     {"mod_freelook",&mod_freelook, 0},
     {"mod_crosshair",&mod_crosshair, 0},
     {"mod_smooth",&mod_smooth, 0},
+    {"mod_footsteps",&mod_footsteps, 0},
+    {"mod_fullcolor",&mod_fullcolor, 0},
+    {"mod_hdsprites",&mod_hdsprites, 0},
+    {"mod_hdtextures",&mod_hdtextures, 0},
 
 #ifndef __BEOS__
     {"chatmacro0", (int *) &chat_macros[0], (intptr_t) HUSTR_CHATMACRO0 },

@@ -890,8 +890,16 @@ void R_SetupFrame (player_t* player)
 //
 // R_RenderView
 //
+// MOD: fullcolor mode (i_video.c).  `truecolor` arms the dual-write in the
+// view drawers for this frame; I_CaptureTrueColorView snapshots the result.
+extern int	mod_fullcolor;
+extern int	truecolor;
+void		I_CaptureTrueColorView (void);
+
 void R_RenderPlayerView (player_t* player)
-{	
+{
+    truecolor = mod_fullcolor;
+
     R_SetupFrame (player);
 
     // Clear buffers.
@@ -916,6 +924,9 @@ void R_RenderPlayerView (player_t* player)
     
     R_DrawMasked ();
 
+    // Snapshot the truecolor view before HUD/menu overlays are drawn on top.
+    I_CaptureTrueColorView ();
+
     // Check for new console commands.
-    NetUpdate ();				
+    NetUpdate ();
 }

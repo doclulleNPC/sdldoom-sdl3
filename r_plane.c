@@ -39,6 +39,8 @@ rcsid[] = "$Id: r_plane.c,v 1.4 1997/02/03 16:47:55 b1 Exp $";
 #include "r_local.h"
 #include "r_sky.h"
 
+extern unsigned int*	ds_hdsrc;	// r_draw.c (HD flat sampling; cleared per plane)
+
 
 
 planefunction_t		floorfunc;
@@ -423,7 +425,10 @@ void R_DrawPlanes (void)
 	ds_source = W_CacheLumpNum(firstflat +
 				   flattranslation[pl->picnum],
 				   PU_STATIC);
-	
+
+	// MOD: HD flat replacement (cleared after this plane's spans).
+	R_HDSetupFlat (flattranslation[pl->picnum]);
+
 	planeheight = abs(pl->height-viewz);
 	light = (pl->lightlevel >> LIGHTSEGSHIFT)+extralight;
 
@@ -447,7 +452,8 @@ void R_DrawPlanes (void)
 			pl->top[x],
 			pl->bottom[x]);
 	}
-	
+
+	ds_hdsrc = 0;		// MOD: done with this plane's HD flat
 	Z_ChangeTag (ds_source, PU_CACHE);
     }
 }

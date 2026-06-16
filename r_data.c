@@ -55,6 +55,8 @@ extern void *alloca(int);
 
 #include "r_data.h"
 
+#include "hd_texture.h"
+
 //
 // Graphics.
 // DOOM graphics for walls and sprites
@@ -684,6 +686,76 @@ void R_InitData (void)
     printf ("\nInitSprites");
     R_InitColormaps ();
     printf ("\nInitColormaps");
+    HD_TexCacheInit (numtextures, numflats);
+}
+
+
+//
+// MOD: HD texture support (Options -> Mod -> HD Textures).  These set the
+// dc_hd*/ds_hd* sampling state in r_draw.c from a wall texture / flat (using
+// the truecolor HD image registered in hd_texture.c).  They live here because
+// the texture_t table is private to this file.
+//
+extern int		truecolor;	// i_video.c
+extern int		mod_hdtextures;	// g_game.c / doomstat.h
+extern unsigned int*	dc_hdsrc;	// r_draw.c
+extern int		dc_hdw, dc_hdh, dc_hu, dc_texheight, dc_texhmask;
+extern unsigned int*	ds_hdsrc;
+extern int		ds_hdw, ds_hdh, ds_hush, ds_hvsh;
+
+static int R_ilog2 (int v)
+{
+    int n = 0;
+    while (v > 1) { v >>= 1; n++; }
+    return n;
+}
+
+// Set up the column drawer to sample an HD wall texture for `texnum` at the
+// original texture column `texcol` (cleared if no HD replacement / disabled).
+void R_HDSetupWall (int texnum, int texcol)
+{
+    hdimage_t*	hd;
+    texture_t*	t;
+    int		texW, texH, c;
+
+    dc_hdsrc = 0;
+    if (!truecolor || !mod_hdtextures || texnum <= 0)
+	return;
+    t = textures[texnum];
+    hd = HD_GetTexture (texnum, t->name);
+    if (!hd)
+	return;
+    texW = t->width;
+    texH = t->height;
+    if (texW < 1 || texH < 1)
+	return;
+    c = texcol % texW;
+    if (c < 0)
+	c += texW;
+    dc_hu = c * hd->w / texW;
+    dc_hdsrc = hd->rgba;
+    dc_hdw = hd->w;
+    dc_hdh = hd->h;
+    dc_texheight = texH;
+    dc_texhmask = texH - 1;
+}
+
+// Set up the span drawer to sample an HD flat (`flatnum` already translated).
+void R_HDSetupFlat (int flatnum)
+{
+    hdimage_t*	hd;
+
+    ds_hdsrc = 0;
+    if (!truecolor || !mod_hdtextures || flatnum < 0)
+	return;
+    hd = HD_GetFlat (flatnum, lumpinfo[firstflat+flatnum].name);
+    if (!hd)
+	return;
+    ds_hdsrc = hd->rgba;
+    ds_hdw = hd->w;
+    ds_hdh = hd->h;
+    ds_hush = R_ilog2 (hd->w) - 6;  if (ds_hush < 0) ds_hush = 0;
+    ds_hvsh = R_ilog2 (hd->h) - 6;  if (ds_hvsh < 0) ds_hvsh = 0;
 }
 
 

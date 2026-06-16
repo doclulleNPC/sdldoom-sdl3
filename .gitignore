@@ -27,3 +27,7 @@ run/doom.exe
 # Misc
 build.log
 run.log
+
+# Asset generators: third-party mod source + intermediate outputs
+tools_footsteps/gen/
+zk-resources-1.0/

@@ -51,6 +51,95 @@ static SDL_Texture*	texture = NULL;
 // Expanded 32-bit (ARGB8888) palette, rebuilt by I_SetPalette.
 static Uint32		palette[256];
 
+// --- Fullcolor (truecolor) mode (Options -> Mod -> Fullcolor) -------------
+// The 3D view drawers (r_draw.c) optionally dual-write a parallel truecolor
+// framebuffer (screen32) using colormap32 -- a smooth, non-palette-snapped
+// version of the 8-bit light colormaps.  I_FinishUpdate then composites the
+// truecolor view into the final image wherever 2D (HUD/menu) did not draw
+// over it.  See R_RenderPlayerView / I_CaptureTrueColorView.
+#define NUMCMAPS	34		// COLORMAP lump = 32 light + invuln + extra
+Uint32			colormap32[NUMCMAPS*256];
+Uint32*			screen32;	// truecolor 3D-view framebuffer
+int			truecolor;	// drawers dual-write while this is set
+static byte*		view8snap;	// 8-bit view snapshot (2D-overdraw detect)
+static int		view_truecolor;	// a truecolor view was captured this frame
+double		fc_lightdim[32];	// per-light-level brightness (exported for HD sprite shading)
+static int		cm_dim_ready;
+static int		cm_built;	// colormap32 has been built at least once
+
+extern byte*		colormaps;	// r_data.c (8-bit light tables)
+extern int		viewwindowx, viewwindowy, scaledviewwidth, viewheight;
+
+// Rebuild colormap32 from the current (possibly tinted) palette.  Called from
+// I_SetPalette so damage/pickup/radsuit palette flashes tint the view too.
+static void I_BuildTrueColormaps (void)
+{
+    int row, i;
+
+    if (!colormaps)
+	return;
+
+    // Derive each light level's brightness once, from the 8-bit colormap.
+    if (!cm_dim_ready)
+    {
+	for (row=0 ; row<32 ; row++)
+	{
+	    double num=0, den=0;
+	    for (i=0 ; i<256 ; i++)
+	    {
+		Uint32 b = palette[i], l = palette[colormaps[row*256+i]];
+		den += ((b>>16)&0xff)+((b>>8)&0xff)+(b&0xff);
+		num += ((l>>16)&0xff)+((l>>8)&0xff)+(l&0xff);
+	    }
+	    fc_lightdim[row] = den>0 ? num/den : 1.0;
+	}
+	cm_dim_ready = 1;
+    }
+
+    // Light levels 0..31: smooth-dim the true palette colour (no snapping).
+    for (row=0 ; row<32 ; row++)
+    {
+	double d = fc_lightdim[row];
+	for (i=0 ; i<256 ; i++)
+	{
+	    Uint32 c = palette[i];
+	    Uint32 r = (Uint32)(((c>>16)&0xff)*d);
+	    Uint32 g = (Uint32)(((c>>8)&0xff)*d);
+	    Uint32 b = (Uint32)((c&0xff)*d);
+	    colormap32[row*256+i] = 0xff000000u | (r<<16) | (g<<8) | b;
+	}
+    }
+    // Special maps (invuln, extra): keep the stylised 8-bit-mapped colour.
+    for (row=32 ; row<NUMCMAPS ; row++)
+	for (i=0 ; i<256 ; i++)
+	    colormap32[row*256+i] = palette[colormaps[row*256+i]];
+
+    cm_built = 1;
+}
+
+// Snapshot the 8-bit view rect right after R_RenderPlayerView, before any HUD
+// or menu draws over it, so the composite can tell view pixels from overlays.
+void I_CaptureTrueColorView (void)
+{
+    int y;
+
+    if (!truecolor || !screen32 || !view8snap)
+    {
+	view_truecolor = 0;
+	return;
+    }
+    // Ensure the truecolor tables exist (colormaps may not have been loaded
+    // yet at the first I_SetPalette during startup).
+    if (!cm_built)
+	I_BuildTrueColormaps();
+    for (y=0 ; y<viewheight ; y++)
+    {
+	int off = (viewwindowy+y)*SCREENWIDTH + viewwindowx;
+	memcpy (view8snap+off, screens[0]+off, scaledviewwidth);
+    }
+    view_truecolor = 1;
+}
+
 // Fake mouse handling.
 boolean		grabMouse;
 
@@ -260,9 +349,32 @@ void I_FinishUpdate (void)
 	Uint32*		dst = (Uint32 *)((Uint8 *)pixels + y*pitch);
 	unsigned char*	src = screens[0] + y*SCREENWIDTH;
 
-	for (x=0 ; x<SCREENWIDTH ; x++)
-	    dst[x] = palette[src[x]];
+	// Fullcolor: inside the 3D view, use the truecolor framebuffer wherever
+	// the 8-bit pixel still matches the pre-HUD snapshot (i.e. no overlay
+	// drew there); everywhere else fall back to the palette expansion.
+	if (view_truecolor
+	    && y >= viewwindowy && y < viewwindowy+viewheight)
+	{
+	    int		vx0 = viewwindowx;
+	    int		vx1 = viewwindowx + scaledviewwidth;
+	    Uint32*	s32  = screen32   + y*SCREENWIDTH;
+	    byte*	snap = view8snap  + y*SCREENWIDTH;
+
+	    for (x=0 ; x<SCREENWIDTH ; x++)
+	    {
+		if (x >= vx0 && x < vx1 && src[x] == snap[x])
+		    dst[x] = s32[x];
+		else
+		    dst[x] = palette[src[x]];
+	    }
+	}
+	else
+	{
+	    for (x=0 ; x<SCREENWIDTH ; x++)
+		dst[x] = palette[src[x]];
+	}
     }
+    view_truecolor = 0;		// consumed; next frame must re-capture
 
     SDL_UnlockTexture(texture);
 
@@ -294,6 +406,10 @@ void I_SetPalette (byte* pal)
 	Uint8 b = gammatable[usegamma][*pal++];
 	palette[i] = ((Uint32)0xff << 24) | (r << 16) | (g << 8) | b;
     }
+
+    // Keep the truecolor light tables in sync (so palette flashes tint the
+    // fullcolor view as well).
+    I_BuildTrueColormaps();
 }
 
 
@@ -451,6 +567,11 @@ void I_InitGraphics(void)
     if (!firsttime)
 	return;
     firsttime = 0;
+
+    // Fullcolor framebuffers, sized for the maximum internal resolution so
+    // they never need reallocating on a resolution change.
+    screen32  = malloc (MAXWIDTH*MAXHEIGHT*sizeof(Uint32));
+    view8snap = malloc (MAXWIDTH*MAXHEIGHT);
 
     // Grab the mouse by default: relative-motion mode drives turning and keeps
     // the cursor confined to the window (essential in windowed mode).  Focus

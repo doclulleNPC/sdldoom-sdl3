@@ -37,6 +37,7 @@ rcsid[] = "$Id: p_user.c,v 1.3 1997/01/28 22:08:29 b1 Exp $";
 #include "sounds.h"
 
 #include "doomstat.h"
+#include "p_footstep.h"
 
 
 
@@ -298,6 +299,9 @@ void P_PlayerThink (player_t* player)
 	P_MovePlayer (player);
     
     P_CalcHeight (player);
+
+    // MOD: terrain-dependent footstep sounds (cosmetic; no playsim RNG).
+    P_PlayerFootsteps (player);
 
     if (player->mo->subsector->sector->special)
 	P_PlayerInSpecialSector (player);

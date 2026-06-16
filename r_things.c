@@ -41,6 +41,17 @@ rcsid[] = "$Id: r_things.c,v 1.5 1997/02/03 16:47:56 b1 Exp $";
 
 #include "doomstat.h"
 
+#include "hd_sprite.h"
+
+// MOD: fullcolor HD sprite replacements -- alpha-blit a truecolor PNG over the
+// truecolor framebuffer in place of the 8-bit sprite (weapons + world things).
+extern int		truecolor;	// i_video.c (fullcolor active this frame)
+extern int		mod_hdsprites;	// g_game.c / doomstat.h
+extern unsigned int*	screen32;	// i_video.c truecolor framebuffer
+extern double		fc_lightdim[32];// i_video.c per-light-level brightness
+extern int		viewwindowx;	// r_draw.c (view rect within the screen)
+extern int		viewwindowy;
+
 
 
 #define MINZ				(FRACUNIT*4)
@@ -390,6 +401,88 @@ void R_DrawMaskedColumn (column_t* column)
 
 
 //
+// R_BlitHDSprite
+// Fullcolor path: draw an HD (truecolor PNG) sprite frame in place of the
+// 8-bit sprite, scaled to the same screen footprint the vissprite computed
+// and clipped per-column by mfloorclip/mceilingclip (so it is occluded by
+// walls/sprites exactly like the original).  Writes only screen32; the
+// i_video composite then shows it wherever no HUD/menu overlay covers it.
+//
+static void R_BlitHDSprite (vissprite_t* vis, patch_t* patch, hdimage_t* hd)
+{
+    int		pw = SHORT(patch->width);
+    int		ph = SHORT(patch->height);
+    fixed_t	scale = vis->scale;
+    fixed_t	sprtop = centeryfrac - FixedMul(vis->texturemid, scale);
+    int		ytop = (sprtop + FRACUNIT-1) >> FRACBITS;
+    int		ybot = (sprtop + ph*scale - 1) >> FRACBITS;
+    int		span = ybot - ytop;
+    fixed_t	frac = vis->startfrac;
+    double	dim = 1.0;
+    int		x;
+
+    if (span < 1)
+	span = 1;
+    if (pw < 1)
+	return;
+
+    // Distance/sector light: dim the truecolor source like the colormap would.
+    if (vis->colormap)
+    {
+	int row = (int)((vis->colormap - colormaps) >> 8);
+	if (row >= 0 && row < 32)
+	    dim = fc_lightdim[row];
+    }
+
+    for (x=vis->x1 ; x<=vis->x2 ; x++, frac += vis->xiscale)
+    {
+	int	texcol = frac >> FRACBITS;
+	int	hu, yl = ytop, yh = ybot, y;
+
+	if (texcol < 0) texcol = 0; else if (texcol >= pw) texcol = pw-1;
+	hu = texcol * hd->w / pw;
+
+	if (yh >= mfloorclip[x])   yh = mfloorclip[x]-1;
+	if (yl <= mceilingclip[x]) yl = mceilingclip[x]+1;
+
+	for (y=yl ; y<=yh ; y++)
+	{
+	    int		hv = (y - ytop) * hd->h / span;
+	    unsigned	px, a, r, g, b;
+	    unsigned*	sp;
+
+	    if (hv < 0) hv = 0; else if (hv >= hd->h) hv = hd->h-1;
+	    px = hd->rgba[hv*hd->w + hu];
+	    a = px >> 24;
+	    if (!a)
+		continue;
+
+	    r = (px>>16)&0xff;  g = (px>>8)&0xff;  b = px&0xff;
+	    if (dim < 0.999)
+	    { r=(unsigned)(r*dim); g=(unsigned)(g*dim); b=(unsigned)(b*dim); }
+
+	    // Absolute screen pixel (matches the 8-bit drawers' ylookup/columnofs
+	    // addressing, i.e. offset by the view-window origin).
+	    sp = &screen32[(y+viewwindowy)*SCREENWIDTH + viewwindowx + x];
+	    if (a >= 255)
+	    {
+		*sp = 0xff000000u | (r<<16) | (g<<8) | b;
+	    }
+	    else
+	    {
+		unsigned d = *sp, na = 255-a;
+		unsigned dr=(d>>16)&0xff, dg=(d>>8)&0xff, db=d&0xff;
+		*sp = 0xff000000u
+		    | (((r*a + dr*na)/255)<<16)
+		    | (((g*a + dg*na)/255)<<8)
+		    |  ((b*a + db*na)/255);
+	    }
+	}
+    }
+}
+
+
+//
 // R_DrawVisSprite
 //  mfloorclip and mceilingclip should also be set.
 //
@@ -403,9 +496,20 @@ R_DrawVisSprite
     int			texturecolumn;
     fixed_t		frac;
     patch_t*		patch;
-	
-	
+
+
     patch = W_CacheLumpNum (vis->patch+firstspritelump, PU_CACHE);
+
+    // MOD: fullcolor HD sprite replacement, if one exists for this frame.
+    if (truecolor && mod_hdsprites)
+    {
+	hdimage_t* hd = HD_Get (lumpinfo[vis->patch+firstspritelump].name);
+	if (hd)
+	{
+	    R_BlitHDSprite (vis, patch, hd);
+	    return;
+	}
+    }
 
     dc_colormap = vis->colormap;
     

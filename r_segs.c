@@ -39,6 +39,8 @@ rcsid[] = "$Id: r_segs.c,v 1.3 1997/01/29 20:10:19 b1 Exp $";
 #include "r_local.h"
 #include "r_sky.h"
 
+extern unsigned int*	dc_hdsrc;	// r_draw.c (HD wall sampling; cleared per column)
+
 
 // OPTIMIZE: closed two sided lines as single sided
 
@@ -284,7 +286,9 @@ void R_RenderSegLoop (void)
 	    dc_yh = yh;
 	    dc_texturemid = rw_midtexturemid;
 	    dc_source = R_GetColumn(midtexture,texturecolumn);
+	    R_HDSetupWall (midtexture, texturecolumn);
 	    colfunc ();
+	    dc_hdsrc = 0;
 	    ceilingclip[rw_x] = viewheight;
 	    floorclip[rw_x] = -1;
 	}
@@ -306,7 +310,9 @@ void R_RenderSegLoop (void)
 		    dc_yh = mid;
 		    dc_texturemid = rw_toptexturemid;
 		    dc_source = R_GetColumn(toptexture,texturecolumn);
+		    R_HDSetupWall (toptexture, texturecolumn);
 		    colfunc ();
+		    dc_hdsrc = 0;
 		    ceilingclip[rw_x] = mid;
 		}
 		else
@@ -336,7 +342,9 @@ void R_RenderSegLoop (void)
 		    dc_texturemid = rw_bottomtexturemid;
 		    dc_source = R_GetColumn(bottomtexture,
 					    texturecolumn);
+		    R_HDSetupWall (bottomtexture, texturecolumn);
 		    colfunc ();
+		    dc_hdsrc = 0;
 		    floorclip[rw_x] = mid;
 		}
 		else

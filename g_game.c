@@ -164,6 +164,10 @@ boolean		autorun;	// key_speed is a toggle: persistent run state
 int		mod_jump;
 int		mod_freelook;
 int		mod_crosshair;
+int		mod_footsteps;
+int		mod_fullcolor;
+int		mod_hdsprites;
+int		mod_hdtextures;
 
 // MOD: clamp for the free-look pitch (BASE-resolution horizon-shift pixels).
 #define LOOKDIRMAX	56

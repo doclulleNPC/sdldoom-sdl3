@@ -64,8 +64,32 @@ int		scaledviewwidth;
 int		viewheight;
 int		viewwindowx;
 int		viewwindowy; 
-byte*		ylookup[MAXHEIGHT]; 
-int		columnofs[MAXWIDTH]; 
+byte*		ylookup[MAXHEIGHT];
+int		columnofs[MAXWIDTH];
+
+// Fullcolor mode (i_video.c): when `truecolor` is set, the view drawers also
+// write the parallel 32-bit framebuffer through colormap32 (the smooth
+// truecolor light tables).  dc_colormap/ds_colormap always point into the
+// 8-bit `colormaps` block, so the matching truecolor row is colormap32 at the
+// same offset, and the matching screen32 pixel is at (dest - screens[0]).
+extern int	truecolor;
+extern unsigned int*	screen32;
+extern unsigned int	colormap32[];
+extern double	fc_lightdim[32];	// i_video.c per-light-level brightness
+
+// HD texture sampling (Options -> Mod -> HD Textures).  r_segs.c sets the
+// dc_hd* state before a wall colfunc and clears it after; r_plane.c sets the
+// ds_hd* state around a flat's spans.  When set (and truecolor), the column/
+// span drawers sample the truecolor HD image into screen32 (the 8-bit write
+// into screens[0] is kept so the i_video composite still works).
+unsigned int*	dc_hdsrc;		// HD wall column source (NULL = none)
+int		dc_hdw, dc_hdh;		// HD image dimensions
+int		dc_hu;			// HD column (precomputed u)
+int		dc_texheight;		// original texture height (v mapping)
+int		dc_texhmask;		// original height-1 (v wrap)
+unsigned int*	ds_hdsrc;		// HD flat source (NULL = none)
+int		ds_hdw, ds_hdh;		// HD flat dimensions
+int		ds_hush, ds_hvsh;	// log2(dim)-6 (64-unit tile -> HD sub-sample)
 
 // Color tables for different players,
 //  translate a limited part to another
@@ -133,17 +157,59 @@ void R_DrawColumn (void)
     // Inner loop that does the actual texture mapping,
     //  e.g. a DDA-lile scaling.
     // This is as fast as it gets.
-    do 
+
+    // Fullcolor + HD wall texture: sample the truecolor image into screen32.
+    if (truecolor && dc_hdsrc)
+    {
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	double		dim = 1.0;
+	int		row = (int)((dc_colormap - colormaps) >> 8);
+	if (row >= 0 && row < 32)
+	    dim = fc_lightdim[row];
+	do
+	{
+	    int		tv = (frac>>FRACBITS) & dc_texhmask;
+	    int		hv = (int)((long long)tv * dc_hdh / dc_texheight);
+	    unsigned	px = dc_hdsrc[hv*dc_hdw + dc_hu];
+	    unsigned	r=(px>>16)&0xff, g=(px>>8)&0xff, b=px&0xff;
+	    if (dim < 0.999)
+	    { r=(unsigned)(r*dim); g=(unsigned)(g*dim); b=(unsigned)(b*dim); }
+	    *dest  = dc_colormap[dc_source[(frac>>FRACBITS)&127]];	// 8-bit (composite)
+	    *dst32 = 0xff000000u | (r<<16) | (g<<8) | b;
+	    dest += SCREENWIDTH;
+	    dst32 += SCREENWIDTH;
+	    frac += fracstep;
+	} while (count--);
+	return;
+    }
+
+    if (truecolor)
+    {
+	unsigned int*	cm32 = colormap32 + (dc_colormap - colormaps);
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	do
+	{
+	    byte idx = dc_source[(frac>>FRACBITS)&127];
+	    *dest = dc_colormap[idx];
+	    *dst32 = cm32[idx];
+	    dest += SCREENWIDTH;
+	    dst32 += SCREENWIDTH;
+	    frac += fracstep;
+	} while (count--);
+	return;
+    }
+
+    do
     {
 	// Re-map color indices from wall texture column
 	//  using a lighting/special effects LUT.
 	*dest = dc_colormap[dc_source[(frac>>FRACBITS)&127]];
-	
-	dest += SCREENWIDTH; 
+
+	dest += SCREENWIDTH;
 	frac += fracstep;
-	
-    } while (count--); 
-} 
+
+    } while (count--);
+}
 
 
 
@@ -236,16 +302,33 @@ void R_DrawColumnLow (void)
     dest = ylookup[dc_yl] + columnofs[dc_x];
     dest2 = ylookup[dc_yl] + columnofs[dc_x+1];
     
-    fracstep = dc_iscale; 
+    fracstep = dc_iscale;
     frac = dc_texturemid + (dc_yl-centery)*fracstep;
-    
-    do 
+
+    if (truecolor)
+    {
+	unsigned int*	cm32 = colormap32 + (dc_colormap - colormaps);
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	unsigned int*	dst32b = screen32 + (dest2 - screens[0]);
+	do
+	{
+	    byte idx = dc_source[(frac>>FRACBITS)&127];
+	    *dest2 = *dest = dc_colormap[idx];
+	    *dst32b = *dst32 = cm32[idx];
+	    dest += SCREENWIDTH;  dest2 += SCREENWIDTH;
+	    dst32 += SCREENWIDTH; dst32b += SCREENWIDTH;
+	    frac += fracstep;
+	} while (count--);
+	return;
+    }
+
+    do
     {
 	// Hack. Does not work corretly.
 	*dest2 = *dest = dc_colormap[dc_source[(frac>>FRACBITS)&127]];
 	dest += SCREENWIDTH;
 	dest2 += SCREENWIDTH;
-	frac += fracstep; 
+	frac += fracstep;
 
     } while (count--);
 }
@@ -348,23 +431,40 @@ void R_DrawFuzzColumn (void)
     // Looks like an attempt at dithering,
     //  using the colormap #6 (of 0-31, a bit
     //  brighter than average).
-    do 
+    if (truecolor)
+    {
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	do
+	{
+	    byte src = dest[fuzzoffset[fuzzpos]*SCREENWIDTH];
+	    *dest  = colormaps[6*256+src];
+	    *dst32 = colormap32[6*256+src];
+	    if (++fuzzpos == FUZZTABLE)
+		fuzzpos = 0;
+	    dest += SCREENWIDTH;
+	    dst32 += SCREENWIDTH;
+	    frac += fracstep;
+	} while (count--);
+	return;
+    }
+
+    do
     {
 	// Lookup framebuffer, and retrieve
 	//  a pixel that is either one column
 	//  left or right of the current one.
 	// Add index from colormap to index.
-	*dest = colormaps[6*256+dest[fuzzoffset[fuzzpos]*SCREENWIDTH]]; 
+	*dest = colormaps[6*256+dest[fuzzoffset[fuzzpos]*SCREENWIDTH]];
 
 	// Clamp table lookup index.
-	if (++fuzzpos == FUZZTABLE) 
+	if (++fuzzpos == FUZZTABLE)
 	    fuzzpos = 0;
-	
+
 	dest += SCREENWIDTH;
 
-	frac += fracstep; 
-    } while (count--); 
-} 
+	frac += fracstep;
+    } while (count--);
+}
  
   
  
@@ -431,19 +531,35 @@ void R_DrawTranslatedColumn (void)
     frac = dc_texturemid + (dc_yl-centery)*fracstep; 
 
     // Here we do an additional index re-mapping.
-    do 
+    if (truecolor)
+    {
+	unsigned int*	cm32 = colormap32 + (dc_colormap - colormaps);
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	do
+	{
+	    byte idx = dc_translation[dc_source[frac>>FRACBITS]];
+	    *dest = dc_colormap[idx];
+	    *dst32 = cm32[idx];
+	    dest += SCREENWIDTH;
+	    dst32 += SCREENWIDTH;
+	    frac += fracstep;
+	} while (count--);
+	return;
+    }
+
+    do
     {
 	// Translation tables are used
 	//  to map certain colorramps to other ones,
 	//  used with PLAY sprites.
 	// Thus the "green" ramp of the player 0 sprite
-	//  is mapped to gray, red, black/indigo. 
+	//  is mapped to gray, red, black/indigo.
 	*dest = dc_colormap[dc_translation[dc_source[frac>>FRACBITS]]];
 	dest += SCREENWIDTH;
-	
-	frac += fracstep; 
-    } while (count--); 
-} 
+
+	frac += fracstep;
+    } while (count--);
+}
 
 
 
@@ -543,9 +659,51 @@ void R_DrawSpan (void)
     dest = ylookup[ds_y] + columnofs[ds_x1];
 
     // We do not check for zero spans here?
-    count = ds_x2 - ds_x1; 
+    count = ds_x2 - ds_x1;
 
-    do 
+    // Fullcolor + HD flat: sub-sample the truecolor flat into screen32.
+    if (truecolor && ds_hdsrc)
+    {
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	double		dim = 1.0;
+	int		row = (int)((ds_colormap - colormaps) >> 8);
+	if (row >= 0 && row < 32)
+	    dim = fc_lightdim[row];
+	do
+	{
+	    int		hu = (xfrac >> (16 - ds_hush)) & (ds_hdw-1);
+	    int		hv = (yfrac >> (16 - ds_hvsh)) & (ds_hdh-1);
+	    unsigned	px = ds_hdsrc[hv*ds_hdw + hu];
+	    unsigned	r=(px>>16)&0xff, g=(px>>8)&0xff, b=px&0xff;
+	    if (dim < 0.999)
+	    { r=(unsigned)(r*dim); g=(unsigned)(g*dim); b=(unsigned)(b*dim); }
+	    spot = ((yfrac>>(16-6))&(63*64)) + ((xfrac>>16)&63);
+	    *dest++  = ds_colormap[ds_source[spot]];		// 8-bit (composite)
+	    *dst32++ = 0xff000000u | (r<<16) | (g<<8) | b;
+	    xfrac += ds_xstep;
+	    yfrac += ds_ystep;
+	} while (count--);
+	return;
+    }
+
+    if (truecolor)
+    {
+	unsigned int*	cm32 = colormap32 + (ds_colormap - colormaps);
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	do
+	{
+	    byte idx;
+	    spot = ((yfrac>>(16-6))&(63*64)) + ((xfrac>>16)&63);
+	    idx = ds_source[spot];
+	    *dest++ = ds_colormap[idx];
+	    *dst32++ = cm32[idx];
+	    xfrac += ds_xstep;
+	    yfrac += ds_ystep;
+	} while (count--);
+	return;
+    }
+
+    do
     {
 	// Current texture index in u,v.
 	spot = ((yfrac>>(16-6))&(63*64)) + ((xfrac>>16)&63);
@@ -555,11 +713,11 @@ void R_DrawSpan (void)
 	*dest++ = ds_colormap[ds_source[spot]];
 
 	// Next step in u,v.
-	xfrac += ds_xstep; 
+	xfrac += ds_xstep;
 	yfrac += ds_ystep;
-	
-    } while (count--); 
-} 
+
+    } while (count--);
+}
 
 
 
@@ -669,19 +827,39 @@ void R_DrawSpanLow (void)
     dest = ylookup[ds_y] + columnofs[ds_x1];
   
     
-    count = ds_x2 - ds_x1; 
-    do 
-    { 
+    count = ds_x2 - ds_x1;
+
+    if (truecolor)
+    {
+	unsigned int*	cm32 = colormap32 + (ds_colormap - colormaps);
+	unsigned int*	dst32 = screen32 + (dest - screens[0]);
+	do
+	{
+	    byte idx;
+	    spot = ((yfrac>>(16-6))&(63*64)) + ((xfrac>>16)&63);
+	    idx = ds_source[spot];
+	    *dest++ = ds_colormap[idx];
+	    *dest++ = ds_colormap[idx];
+	    *dst32++ = cm32[idx];
+	    *dst32++ = cm32[idx];
+	    xfrac += ds_xstep;
+	    yfrac += ds_ystep;
+	} while (count--);
+	return;
+    }
+
+    do
+    {
 	spot = ((yfrac>>(16-6))&(63*64)) + ((xfrac>>16)&63);
 	// Lowres/blocky mode does it twice,
 	//  while scale is adjusted appropriately.
-	*dest++ = ds_colormap[ds_source[spot]]; 
 	*dest++ = ds_colormap[ds_source[spot]];
-	
-	xfrac += ds_xstep; 
-	yfrac += ds_ystep; 
+	*dest++ = ds_colormap[ds_source[spot]];
 
-    } while (count--); 
+	xfrac += ds_xstep;
+	yfrac += ds_ystep;
+
+    } while (count--);
 }
 
 //

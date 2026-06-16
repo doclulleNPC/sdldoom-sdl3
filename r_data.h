@@ -42,6 +42,10 @@ R_GetColumn
 void R_InitData (void);
 void R_PrecacheLevel (void);
 
+// MOD: HD texture / flat sampling setup (Options -> Mod -> HD Textures).
+void R_HDSetupWall (int texnum, int texcol);
+void R_HDSetupFlat (int flatnum);
+
 
 // Retrieval.
 // Floor/ceiling opaque texture tiles,

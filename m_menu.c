@@ -211,6 +211,10 @@ void M_ModJump(int choice);
 void M_ModFreelook(int choice);
 void M_ModCrosshair(int choice);
 void M_ModSmooth(int choice);
+void M_ModFootsteps(int choice);
+void M_ModFullcolor(int choice);
+void M_ModHDSprites(int choice);
+void M_ModHDTextures(int choice);
 void M_DrawMod(void);
 void I_SetSmoothing(int on);		// i_video.c
 
@@ -478,6 +482,10 @@ enum
     mod_freelook_item,
     mod_crosshair_item,
     mod_smooth_item,
+    mod_footsteps_item,
+    mod_fullcolor_item,
+    mod_hdsprites_item,
+    mod_hdtextures_item,
     mod_end
 } mod_e;
 
@@ -486,7 +494,11 @@ menuitem_t ModMenu[]=
     {2,"",	M_ModJump,'j'},		// left/right or enter toggles
     {2,"",	M_ModFreelook,'f'},
     {2,"",	M_ModCrosshair,'c'},
-    {2,"",	M_ModSmooth,'s'}
+    {2,"",	M_ModSmooth,'s'},
+    {2,"",	M_ModFootsteps,'o'},
+    {2,"",	M_ModFullcolor,'u'},
+    {2,"",	M_ModHDSprites,'h'},
+    {2,"",	M_ModHDTextures,'t'}
 };
 
 menu_t  ModDef =
@@ -1097,6 +1109,22 @@ void M_DrawMod(void)
     M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_smooth_item, "Smoothing");
     M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_smooth_item,
 		mod_smooth ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_footsteps_item, "Footsteps");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_footsteps_item,
+		mod_footsteps ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_fullcolor_item, "Fullcolor");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_fullcolor_item,
+		mod_fullcolor ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_hdsprites_item, "HD Sprites");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_hdsprites_item,
+		mod_hdsprites ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_hdtextures_item, "HD Textures");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_hdtextures_item,
+		mod_hdtextures ? "On" : "Off");
 }
 
 void M_ModJump(int choice)
@@ -1122,6 +1150,36 @@ void M_ModCrosshair(int choice)
 void M_ModSmooth(int choice)
 {
     I_SetSmoothing(!mod_smooth);
+    M_SaveDefaults();
+}
+
+void M_ModFootsteps(int choice)
+{
+    mod_footsteps = !mod_footsteps;
+    M_SaveDefaults();
+}
+
+void M_ModFullcolor(int choice)
+{
+    mod_fullcolor = !mod_fullcolor;
+    M_SaveDefaults();
+}
+
+void M_ModHDSprites(int choice)
+{
+    mod_hdsprites = !mod_hdsprites;
+    // HD sprites are truecolor; they only show with Fullcolor on, so turn it
+    // on automatically when enabling HD.
+    if (mod_hdsprites)
+	mod_fullcolor = 1;
+    M_SaveDefaults();
+}
+
+void M_ModHDTextures(int choice)
+{
+    mod_hdtextures = !mod_hdtextures;
+    if (mod_hdtextures)
+	mod_fullcolor = 1;	// HD textures are truecolor (needs Fullcolor)
     M_SaveDefaults();
 }
 

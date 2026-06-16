@@ -291,6 +291,10 @@ extern	int		mod_jump;	// allow jumping
 extern	int		mod_freelook;	// mouse looks up/down (and aim follows)
 extern	int		mod_crosshair;	// draw a center crosshair
 extern	int		mod_smooth;	// bilinear upscale filter (i_video.c)
+extern	int		mod_footsteps;	// terrain-dependent footstep sounds (p_footstep.c)
+extern	int		mod_fullcolor;	// truecolor 3D view (i_video.c / r_draw.c)
+extern	int		mod_hdsprites;	// HD truecolor sprite replacements (hd_sprite.c)
+extern	int		mod_hdtextures;	// HD truecolor wall/flat textures (hd_texture.c)
 
 
 

@@ -936,6 +936,18 @@ void D_DoomMain (void)
 	D_AddFile (file);
     }
 	
+    // MOD: auto-load the terrain footstep sound pack if it sits next to the
+    // game (adds DS* sound lumps only; does not flag the game as modified).
+    if (!M_CheckParm ("-nofootsteps"))
+    {
+	FILE* fsw = fopen ("footsteps.wad", "rb");
+	if (fsw)
+	{
+	    fclose (fsw);
+	    D_AddFile ("footsteps.wad");
+	}
+    }
+
     p = M_CheckParm ("-file");
     if (p)
     {
