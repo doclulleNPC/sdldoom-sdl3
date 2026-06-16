@@ -87,7 +87,7 @@ The generator scripts live in `tools/` and expect the source packs in
 |--------------|---------------------------------|-----------------------------------|---------------------------------------------|---------------------|
 | Footsteps    | zk-resources (DaZombieKiller)   | `footsteps.pk3`                   | `python tools/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
 | HD textures  | DHTP (KuriKai)                  | `hd_textures.pk3`                 | `python tools/gen_hdtextures.py`  | `run/hdtextures.wad` |
-| HD sprites   | HD weapons / items (Marcelus)   | `hd_weapons.pk3`, `hd_items.pk3`  | `python tools/gen_hdsprites.py`   | `run/hdsprites.wad`  |
+| HD sprites   | Marcelus HD sprites (items)     | `marcelus_hd_sprites.pk3` (+ optional `hd_weapons.pk3`) | `python tools/gen_hdsprites.py`   | `run/hdsprites.wad`  |
 
 Sources:
 
@@ -97,8 +97,21 @@ Sources:
   pack used here is the pk3 mirrored on the Wad Archive:
   [a9555fd5…pk3.gz](https://archive.org/download/wadarchive/DATA/a9.zip/a9%2F555fd5230d6010a408927837fcfcd6b3ae1eb8%2Fa9555fd5230d6010a408927837fcfcd6b3ae1eb8.pk3.gz)
   (decompress the `.gz` to get the `.pk3`).
-- **HD sprites** — HD weapon and item sprites by **Marcelus**. _(TODO: add the
-  download URL — the link didn't come through.)_
+- **HD sprites (items/decorations)** — Marcelus HD Sprites:
+  [moddb.com/games/doom/addons/marcelus-hd-sprites-ver-1-0](https://www.moddb.com/games/doom/addons/marcelus-hd-sprites-ver-1-0)
+  (file `hdsprites9224.rar`). Extract the inner `marcelus_hd_sprites.pk3` from
+  the rar into `run/` (`unrar e hdsprites9224.rar 'hdsprites9224/marcelus_hd_sprites.pk3'`).
+  These replace item/pickup/decoration sprites — they use vanilla sprite-frame
+  names, so the engine's name-matching HD path picks them up.
+- **HD first-person weapons** — *not currently supported.* The engine's HD path
+  replaces sprite frames **by their vanilla lump name** (`SHTGA0`, `CHGGA0`, …),
+  so it needs a weapon pack that keeps those names (PNGs under `hires/sprites/`).
+  Drop such a pack in `run/` as `hd_weapons.pk3` and `gen_hdsprites.py` will
+  include it. Note **Smooth HD Weapons**
+  ([moddb.com/mods/doom-enhancement-project/addons/smooth-hd-weapons-for-doom](https://www.moddb.com/mods/doom-enhancement-project/addons/smooth-hd-weapons-for-doom),
+  `HDSmoothWeapons.zip`) does **not** work here: it is a GZDoom **ZScript** mod
+  whose frames use custom names under `patches/` and are driven by ZScript weapon
+  states / `TEXTURES`, none of which this engine has.
 
 Notes:
 

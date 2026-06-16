@@ -1,18 +1,25 @@
 #!/usr/bin/env python3
-# Pack the HD sprite PNGs (hd_weapons.pk3 + hd_items.pk3) into a single WAD,
+# Pack the HD sprite PNGs (weapon + item/decoration packs) into a single WAD,
 # one lump per sprite frame (lump name = uppercased PNG basename), raw PNG
 # bytes.  hd_sprite.c reads this WAD directly and decodes via stb_image.
+#
+# Source packs (drop in run/; either alone is fine -- a missing one is skipped):
+#   hd_weapons.pk3           HD weapon sprites
+#   marcelus_hd_sprites.pk3  Marcelus HD item/decoration sprites, extracted from
+#                            hdsprites9224.rar (see README -> Optional HD assets)
 import os, zipfile, struct, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RUN  = os.path.join(ROOT, "..", "run")
-SRC  = ["hd_weapons.pk3", "hd_items.pk3"]
+SRC  = ["hd_weapons.pk3", "marcelus_hd_sprites.pk3"]
 OUT  = os.path.join(RUN, "hdsprites.wad")
 
 lumps = []          # (NAME, bytes)
 seen = {}
 for pk in SRC:
     path = os.path.join(RUN, pk)
+    if not os.path.exists(path):
+        print("  skip (not present):", pk, file=sys.stderr); continue
     with zipfile.ZipFile(path) as z:
         for info in z.infolist():
             n = info.filename
