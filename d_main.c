@@ -72,6 +72,7 @@ static int access(char *file, int mode)
 #include "m_misc.h"
 #include "m_menu.h"
 #include "c_console.h"
+#include "i_udp.h"	// MOD: Chocolate/Crispy-compatible netplay (stage 1: query)
 
 #include "i_system.h"
 #include "i_sound.h"
@@ -830,7 +831,16 @@ void D_DoomMain (void)
     char                    file[256];
 
     FindResponseFile ();
-	
+
+    // MOD: -querychoc <host[:port]> -- query a Chocolate/Crispy server and exit
+    // (Stage 1 of vanilla multiplayer interop; see i_udp.c).
+    p = M_CheckParm ("-querychoc");
+    if (p && p < myargc-1)
+    {
+	I_QueryChocServer (myargv[p+1]);
+	exit (0);
+    }
+
     IdentifyVersion ();
 	
     setbuf (stdout, NULL);

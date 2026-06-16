@@ -12,6 +12,7 @@ gcc -O2 -o doom.exe *.c \
     -I"$SDL3/include" \
     -DSDL_MAIN_HANDLED \
     "$SDL3/lib/$ARCH/SDL3.lib" \
+    -lws2_32 \
     -lm
 
 # Put the runtime DLL next to the executable.
