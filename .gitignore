@@ -21,6 +21,8 @@ crash.log
 # IWADs / commercial game data are NOT distributed here (licensing)
 *.wad
 *.pk3
+*.rar
+*.zip
 run/doom-linux
 run/doom.exe
 
