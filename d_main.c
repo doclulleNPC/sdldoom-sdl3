@@ -33,6 +33,7 @@ static const char rcsid[] = "$Id: d_main.c,v 1.8 1997/02/03 22:45:09 b1 Exp $";
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <SDL3/SDL.h>	// SDL_GetBasePath (exe dir for the iwads/ search)
 
 extern int access(char *file, int mode);
 
@@ -565,6 +566,48 @@ void D_AddFile (char *file)
 }
 
 //
+// D_WadPath
+// MOD: build a path to IWAD `wad`, searching (in order) the primary dir
+// (DOOMWADDIR or "."), an "iwads" subfolder of the working dir, and an "iwads"
+// subfolder of the executable's own directory.  Returns a malloc'd path to the
+// first that exists, else <primary>/wad (so the usual "not found" path remains).
+//
+static char* D_WadPath (const char* primary, const char* wad)
+{
+    const char*	base = SDL_GetBasePath ();	// exe dir (may be NULL)
+    char	exeiwads[1024];
+    const char*	dirs[3];
+    int		n = 0, i;
+    char*	path;
+    size_t	len;
+
+    dirs[n++] = (primary && primary[0]) ? primary : ".";
+    dirs[n++] = "iwads";
+    if (base)
+    {
+	snprintf (exeiwads, sizeof(exeiwads), "%siwads", base);
+	dirs[n++] = exeiwads;
+    }
+
+    for (i = 0 ; i < n ; i++)
+    {
+	len = strlen(dirs[i]) + 1 + strlen(wad) + 1;
+	path = malloc (len);
+	snprintf (path, len, "%s/%s", dirs[i], wad);
+	if (!access (path, R_OK))
+	    return path;
+	free (path);
+    }
+
+    // not found anywhere: fall back to the primary dir for the error path
+    len = strlen(dirs[0]) + 1 + strlen(wad) + 1;
+    path = malloc (len);
+    snprintf (path, len, "%s/%s", dirs[0], wad);
+    return path;
+}
+
+
+//
 // IdentifyVersion
 // Checks availability of IWAD files by name,
 // to determine whether registered/commercial features
@@ -588,34 +631,14 @@ void IdentifyVersion (void)
     if (!doomwaddir)
 	doomwaddir = ".";
 
-    // Commercial.
-    doom2wad = malloc(strlen(doomwaddir)+1+9+1);
-    sprintf(doom2wad, "%s/doom2.wad", doomwaddir);
-
-    // Retail.
-    doomuwad = malloc(strlen(doomwaddir)+1+8+1);
-    sprintf(doomuwad, "%s/doomu.wad", doomwaddir);
-    
-    // Registered.
-    doomwad = malloc(strlen(doomwaddir)+1+8+1);
-    sprintf(doomwad, "%s/doom.wad", doomwaddir);
-    
-    // Shareware.
-    doom1wad = malloc(strlen(doomwaddir)+1+9+1);
-    sprintf(doom1wad, "%s/doom1.wad", doomwaddir);
-
-     // Bug, dear Shawn.
-    // Insufficient malloc, caused spurious realloc errors.
-    plutoniawad = malloc(strlen(doomwaddir)+1+/*9*/12+1);
-    sprintf(plutoniawad, "%s/plutonia.wad", doomwaddir);
-
-    tntwad = malloc(strlen(doomwaddir)+1+9+1);
-    sprintf(tntwad, "%s/tnt.wad", doomwaddir);
-
-
-    // French stuff.
-    doom2fwad = malloc(strlen(doomwaddir)+1+10+1);
-    sprintf(doom2fwad, "%s/doom2f.wad", doomwaddir);
+    // Each is searched in DOOMWADDIR/cwd, then ./iwads, then <exedir>/iwads.
+    doom2wad    = D_WadPath(doomwaddir, "doom2.wad");	// Commercial
+    doomuwad    = D_WadPath(doomwaddir, "doomu.wad");	// Retail
+    doomwad     = D_WadPath(doomwaddir, "doom.wad");	// Registered
+    doom1wad    = D_WadPath(doomwaddir, "doom1.wad");	// Shareware
+    plutoniawad = D_WadPath(doomwaddir, "plutonia.wad");
+    tntwad      = D_WadPath(doomwaddir, "tnt.wad");
+    doom2fwad   = D_WadPath(doomwaddir, "doom2f.wad");	// French
 
     home = getenv("HOME");
     if (!home)
