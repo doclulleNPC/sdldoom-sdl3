@@ -481,7 +481,7 @@ void I_InitGraphics(void)
 	fullscreen_mode = 1;
     }
 
-    window = SDL_CreateWindow("SDL DOOM! v1.10", w, h, window_flags);
+    window = SDL_CreateWindow("SDLDoom-SDL3", w, h, window_flags);
     if ( window == NULL )
 	I_Error("Could not create %dx%d window: %s", w, h, SDL_GetError());
 
