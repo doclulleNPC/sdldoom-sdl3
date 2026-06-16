@@ -302,6 +302,11 @@ void I_SetPalette (byte* pal)
 // 2 = 16:9, 3 = stretch/free.
 int	screen_aspect = 0;
 
+// MOD: bilinear filtering on the upscale.  This is the closest the 8-bit
+// software renderer can get to "antialiasing": it smooths the magnified frame
+// (no true MSAA -- there is no geometry/truecolour stage to sample).
+int	mod_smooth = 0;
+
 static const struct { int num, den; } aspects[4] =
 {
     { 4, 3 }, { 16, 10 }, { 16, 9 }, { 0, 0 }	// {0,0} = free
@@ -331,7 +336,17 @@ static void I_CreateTexture(void)
 				SCREENWIDTH, SCREENHEIGHT);
     if ( texture == NULL )
 	I_Error("Could not create texture: %s", SDL_GetError());
-    SDL_SetTextureScaleMode(texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureScaleMode(texture,
+	mod_smooth ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
+}
+
+// MOD: toggle bilinear smoothing at runtime (Options -> Mod).
+void I_SetSmoothing(int on)
+{
+    mod_smooth = on ? 1 : 0;
+    if (texture)
+	SDL_SetTextureScaleMode(texture,
+	    mod_smooth ? SDL_SCALEMODE_LINEAR : SDL_SCALEMODE_NEAREST);
 }
 
 //

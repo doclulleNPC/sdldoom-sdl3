@@ -210,7 +210,9 @@ void M_Mod(int choice);
 void M_ModJump(int choice);
 void M_ModFreelook(int choice);
 void M_ModCrosshair(int choice);
+void M_ModSmooth(int choice);
 void M_DrawMod(void);
+void I_SetSmoothing(int on);		// i_video.c
 
 void M_FinishReadThis(int choice);
 void M_LoadSelect(int choice);
@@ -442,10 +444,15 @@ static char*	M_KeyLabels[]=
     "Strafe Left", "Strafe Right", "Fire", "Use", "Strafe", "Run", "Jump"
 };
 
-enum { keys_end = 11 } keys_e;		// must match the arrays above
+enum { keys_end = 11 } keys_e;		// number of rebindable actions (M_KeyVars)
 
-menuitem_t KeysMenu[keys_end]=
+// The Controls menu = a mouse-speed slider (item 0) then the key binds.
+#define CTRL_ITEMS	(keys_end+1)
+#define CTRL_LH		13	// tighter line height so 12 rows clear the status bar
+
+menuitem_t KeysMenu[CTRL_ITEMS]=
 {
+    {2,"",M_ChangeSensitivity,'m'},	// mouse speed slider
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
     {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0}, {1,"",M_KeyBind,0},
@@ -454,11 +461,11 @@ menuitem_t KeysMenu[keys_end]=
 
 menu_t  KeysDef =
 {
-    keys_end,
+    CTRL_ITEMS,
     &OptionsDef,
     KeysMenu,
     M_DrawKeys,
-    48,16,
+    48,8,
     0
 };
 
@@ -470,6 +477,7 @@ enum
     mod_jump_item,
     mod_freelook_item,
     mod_crosshair_item,
+    mod_smooth_item,
     mod_end
 } mod_e;
 
@@ -477,7 +485,8 @@ menuitem_t ModMenu[]=
 {
     {2,"",	M_ModJump,'j'},		// left/right or enter toggles
     {2,"",	M_ModFreelook,'f'},
-    {2,"",	M_ModCrosshair,'c'}
+    {2,"",	M_ModCrosshair,'c'},
+    {2,"",	M_ModSmooth,'s'}
 };
 
 menu_t  ModDef =
@@ -1040,9 +1049,14 @@ void M_DrawKeys(void)
 {
     int	i;
 
+    // item 0: mouse speed slider (label + thermo on the same line)
+    M_WriteText(KeysDef.x, KeysDef.y, "Mouse Speed");
+    M_DrawThermo(KeysDef.x + 104, KeysDef.y, 10, mouseSensitivity);
+
+    // items 1..keys_end: the key binds
     for (i = 0; i < keys_end; i++)
     {
-	int y = KeysDef.y + LINEHEIGHT*i;
+	int y = KeysDef.y + CTRL_LH*(i+1);
 	M_WriteText(KeysDef.x, y, M_KeyLabels[i]);
 	if (keyToBind == i)
 	    M_WriteText(KeysDef.x + 168, y, "PRESS KEY");
@@ -1053,8 +1067,9 @@ void M_DrawKeys(void)
 
 void M_KeyBind(int choice)
 {
-    // Next key press (handled at the top of M_Responder) becomes this binding.
-    keyToBind = choice;
+    // Menu item 0 is the slider, so bind index = item - 1.  The next key press
+    // (handled at the top of M_Responder) becomes this binding.
+    keyToBind = choice - 1;
 }
 
 void M_Keys(int choice)
@@ -1078,6 +1093,10 @@ void M_DrawMod(void)
     M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_crosshair_item, "Crosshair");
     M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_crosshair_item,
 		mod_crosshair ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_smooth_item, "Smoothing");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_smooth_item,
+		mod_smooth ? "On" : "Off");
 }
 
 void M_ModJump(int choice)
@@ -1097,6 +1116,12 @@ void M_ModFreelook(int choice)
 void M_ModCrosshair(int choice)
 {
     mod_crosshair = !mod_crosshair;
+    M_SaveDefaults();
+}
+
+void M_ModSmooth(int choice)
+{
+    I_SetSmoothing(!mod_smooth);
     M_SaveDefaults();
 }
 
@@ -1259,7 +1284,7 @@ void M_DrawOptions(void)
     // "Video" / "Keys" are text items (no graphic lump); draw at 2x so they
     // match the size of the graphic menu items above.
     M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*video,"Video",2);
-    M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*keys,"Keys",2);
+    M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*keys,"Controls",2);
     M_WriteTextBig(OptionsDef.x,OptionsDef.y+LINEHEIGHT*mod,"Mod",2);
 }
 
@@ -2163,8 +2188,13 @@ void M_Drawer (void)
 
     
     // DRAW SKULL
-    V_DrawPatchDirect(x + SKULLXOFF,currentMenu->y - 5 + itemOn*LINEHEIGHT, 0,
-		      W_CacheLumpName(skullName[whichSkull],PU_CACHE));
+    // The Controls menu packs 12 rows, so it uses a tighter line height
+    // (CTRL_LH) than the patch menus; keep the cursor in step.
+    {
+	int lh = (currentMenu == &KeysDef) ? CTRL_LH : LINEHEIGHT;
+	V_DrawPatchDirect(x + SKULLXOFF,currentMenu->y - 5 + itemOn*lh, 0,
+			  W_CacheLumpName(skullName[whichSkull],PU_CACHE));
+    }
 
 }
 

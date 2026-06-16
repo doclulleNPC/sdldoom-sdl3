@@ -208,10 +208,11 @@ extern	int	numChannels;
 extern	int	screen_aspect;
 extern	int	fullscreen_mode;
 
-// MOD feature toggles (g_game.c / doomstat.h)
+// MOD feature toggles (g_game.c / i_video.c / doomstat.h)
 extern	int	mod_jump;
 extern	int	mod_freelook;
 extern	int	mod_crosshair;
+extern	int	mod_smooth;
 
 
 extern char*	chat_macros[];
@@ -277,6 +278,7 @@ default_t	defaults[] =
     {"mod_jump",&mod_jump, 0},
     {"mod_freelook",&mod_freelook, 0},
     {"mod_crosshair",&mod_crosshair, 0},
+    {"mod_smooth",&mod_smooth, 0},
 
 #ifndef __BEOS__
     {"chatmacro0", (int *) &chat_macros[0], (intptr_t) HUSTR_CHATMACRO0 },

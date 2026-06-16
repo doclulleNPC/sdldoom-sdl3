@@ -290,6 +290,7 @@ extern	int		ticdup;
 extern	int		mod_jump;	// allow jumping
 extern	int		mod_freelook;	// mouse looks up/down (and aim follows)
 extern	int		mod_crosshair;	// draw a center crosshair
+extern	int		mod_smooth;	// bilinear upscale filter (i_video.c)
 
 
 
