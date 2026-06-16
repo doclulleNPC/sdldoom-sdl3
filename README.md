@@ -7,6 +7,8 @@ in-game Video and Keys menus.
 
 This continues where the long-dormant `sdldoom-1.10-mod` left off.
 
+![SDLDoom-SDL3 running DOOM II at 1280×960 hi-res](docs/screenshot.png)
+
 ## What's new vs. the original SDLDoom
 
 - **SDL 1.x → SDL 3.** Window/renderer/streaming-texture display, `SDL_AudioStream`
