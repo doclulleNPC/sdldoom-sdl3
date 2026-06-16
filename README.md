@@ -79,15 +79,15 @@ content is under the mod authors' own terms. Both the source `.pk3`s and the
 built `.wad`s are gitignored; the game loads the `.wad`s from the working
 directory (i.e. next to `doom.exe`, the `run/` folder).
 
-The generator scripts live in `tools_footsteps/` and expect the source packs in
+The generator scripts live in `tools/` and expect the source packs in
 `run/`. They require **Python 3**; the footsteps generator additionally needs
 **`ffmpeg`** on `PATH` (it transcodes the source audio to DMX format).
 
 | Feature      | Source (see links below)        | Place in `run/` as                | Build with                                  | Produces            |
 |--------------|---------------------------------|-----------------------------------|---------------------------------------------|---------------------|
-| Footsteps    | zk-resources (DaZombieKiller)   | `footsteps.pk3`                   | `python tools_footsteps/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
-| HD textures  | DHTP (KuriKai)                  | `hd_textures.pk3`                 | `python tools_footsteps/gen_hdtextures.py`  | `run/hdtextures.wad` |
-| HD sprites   | HD weapons / items (Marcelus)   | `hd_weapons.pk3`, `hd_items.pk3`  | `python tools_footsteps/gen_hdsprites.py`   | `run/hdsprites.wad`  |
+| Footsteps    | zk-resources (DaZombieKiller)   | `footsteps.pk3`                   | `python tools/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
+| HD textures  | DHTP (KuriKai)                  | `hd_textures.pk3`                 | `python tools/gen_hdtextures.py`  | `run/hdtextures.wad` |
+| HD sprites   | HD weapons / items (Marcelus)   | `hd_weapons.pk3`, `hd_items.pk3`  | `python tools/gen_hdsprites.py`   | `run/hdsprites.wad`  |
 
 Sources:
 
@@ -105,6 +105,12 @@ Notes:
 - **Footsteps** also regenerates the in-tree `footstep_tables.h` (flat→terrain
   map and per-terrain sound variants) from the pack's `sndinfo.txt` /
   `language.txt`, so rerun it if you update the source pack.
+- If your `footsteps.pk3` is instead a "generic terrain" pack laid out as
+  `sound/footstep/<terrain>/*.wav` (no `sndinfo.txt`/`language.txt`), use
+  `python tools/gen_footsteps_terrainpack.py` instead. It maps that pack's
+  terrain folders onto the lump names the committed tables already expect and
+  fills any terrain the pack lacks from a close one — so it does **not** touch
+  `footstep_tables.h`/`sounds.h`.
 - The scripts apply the relevant GZDoom filter precedence (`filter/doom` then
   `filter/doom.doom2`) and only pack DOOM II–relevant, ≤8-char lump names.
 - Once the `.wad`s are in `run/`, launch the game and enable each feature in

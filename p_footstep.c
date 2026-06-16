@@ -8,7 +8,7 @@
 //	(GDCC/ACS source in zk-resources-1.0/project_footsteps/source/src/main.c).
 //	The flat->terrain table comes from that mod's language.txt and the
 //	sound variants from its sndinfo.txt; both are regenerated, together with
-//	footsteps.wad, by tools_footsteps/gen_footsteps.py into footstep_tables.h.
+//	footsteps.wad, by tools/gen_footsteps.py into footstep_tables.h.
 //
 //	The original drives the sim from an ACS ENTER script; here we run the
 //	same logic from P_PlayerThink.  It is purely cosmetic and deliberately
