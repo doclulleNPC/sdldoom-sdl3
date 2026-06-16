@@ -97,16 +97,21 @@ Sources:
   pack used here is the pk3 mirrored on the Wad Archive:
   [a9555fd5…pk3.gz](https://archive.org/download/wadarchive/DATA/a9.zip/a9%2F555fd5230d6010a408927837fcfcd6b3ae1eb8%2Fa9555fd5230d6010a408927837fcfcd6b3ae1eb8.pk3.gz)
   (decompress the `.gz` to get the `.pk3`).
-- **HD sprites** — Marcelus HD sprites (HD weapons *and* items/decorations):
-  ModDB [marcelus hd sprites](https://www.moddb.com/games/doom/addons/marcelus-hd-sprites-ver-1-0),
-  author's thread [forum.zdoom.org viewtopic t=67765](https://forum.zdoom.org/viewtopic.php?t=67765).
-  Place the pack in `run/` as `marcelus_hd_soft.pk3`. The sprites are PNGs under
-  `hires/sprites/` named with vanilla DOOM frame names (`PISGA0`, `SHTGA0`,
-  `MEDIA0`, …), so the engine's name-matching HD path uses them directly.
-  Heads-up: ModDB hosts more than one build — some releases cover **items only**.
-  Use a build that also includes the first-person weapon frames
-  (`hires/sprites/pistol/PISGA0.png`, etc.) if you want HD weapons; that is what
-  `marcelus_hd_soft.pk3` here contains.
+- **HD sprites** — Marcelus HD sprites. Download hub (all variants):
+  [doomworld.com/forum/topic/130371](https://www.doomworld.com/forum/topic/130371-doom-hd-sprites-and-textures-update-25824/).
+  This engine renders in **software mode**, so grab the author's **"HD sprites
+  for software mode"** build
+  ([Google Drive](https://drive.google.com/file/d/1PUMh-Y6i2QA8dNyE2wuZhy4-50ddqPWo/view))
+  and put it in `run/` as `marcelus_hd_soft.pk3`. It carries both the
+  first-person weapons and the items/decorations as PNGs under `hires/sprites/`
+  with vanilla DOOM frame names (`PISGA0`, `SHTGA0`, `MEDIA0`, …), which the
+  engine's name-matching HD path uses directly. The same thread separately links
+  the GZDoom (hardware-mode) sprites
+  ([ModDB](https://www.moddb.com/games/doom/addons/marcelus-hd-sprites-ver-1-0)),
+  an [alternative set](https://www.moddb.com/games/doom/addons/doom-alternative-hd-sprites),
+  and [upscaled classic weapons](https://www.moddb.com/games/doom/addons/upscaled-classic-weapons-sprites-for-doom-and-doom-2);
+  those hardware/items-only builds work too as long as their PNGs keep the
+  vanilla frame names under `hires/sprites/`.
 
   > Note: GZDoom **ZScript** weapon mods (e.g. Smooth HD Weapons) do **not** work
   > here — their frames use custom names driven by ZScript states / `TEXTURES`,
