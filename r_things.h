@@ -30,8 +30,9 @@
 
 #define MAXVISSPRITES  	128
 
-extern vissprite_t	vissprites[MAXVISSPRITES];
+extern vissprite_t*	vissprites;	// dynamic; grows past MAXVISSPRITES
 extern vissprite_t*	vissprite_p;
+extern unsigned		maxvissprites;	// current allocated capacity
 extern vissprite_t	vsprsortedhead;
 
 // Constant arrays used for psprite clipping

@@ -297,8 +297,12 @@ void R_InitSpriteDefs (char** namelist)
 //
 // GAME FUNCTIONS
 //
-vissprite_t	vissprites[MAXVISSPRITES];
+// vissprites grows on demand (see R_NewVisSprite); MAXVISSPRITES is just the
+// initial capacity now.  The old fixed array funnelled every sprite past the
+// cap into one shared overflowsprite, so distant things vanished on busy scenes.
+vissprite_t*	vissprites;
 vissprite_t*	vissprite_p;
+unsigned	maxvissprites;
 int		newvissprite;
 
 
@@ -334,13 +338,20 @@ void R_ClearSprites (void)
 //
 // R_NewVisSprite
 //
-vissprite_t	overflowsprite;
-
 vissprite_t* R_NewVisSprite (void)
 {
-    if (vissprite_p == &vissprites[MAXVISSPRITES])
-	return &overflowsprite;
-    
+    // grow the vissprite array on demand instead of dropping the sprite into
+    // a shared overflow dummy once the old fixed cap filled.
+    if (vissprite_p == &vissprites[maxvissprites])
+    {
+	unsigned	pos = vissprite_p - vissprites;
+	unsigned	newmax = maxvissprites ? maxvissprites*2 : MAXVISSPRITES;
+
+	vissprites = realloc (vissprites, newmax*sizeof(*vissprites));
+	vissprite_p = vissprites + pos;
+	maxvissprites = newmax;
+    }
+
     vissprite_p++;
     return vissprite_p-1;
 }

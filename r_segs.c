@@ -390,10 +390,20 @@ R_StoreWallRange
     fixed_t		vtop;
     int			lightnum;
 
-    // don't overflow and crash
-    if (ds_p == &drawsegs[MAXDRAWSEGS])
-	return;		
-		
+    // grow the drawseg array on demand instead of silently dropping the
+    // segment (which showed up as HOM / missing walls once the old fixed
+    // MAXDRAWSEGS cap filled up).
+    if (ds_p == &drawsegs[maxdrawsegs])
+    {
+	unsigned	pos = ds_p - drawsegs;
+	unsigned	newmax = maxdrawsegs ? maxdrawsegs*2 : MAXDRAWSEGS;
+
+	drawsegs = realloc (drawsegs, newmax*sizeof(*drawsegs));
+	ds_p = drawsegs + pos;
+	maxdrawsegs = newmax;
+    }
+
+
 #ifdef RANGECHECK
     if (start >=viewwidth || start > stop)
 	I_Error ("Bad R_RenderWallRange: %i to %i", start , stop);

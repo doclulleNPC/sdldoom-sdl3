@@ -456,9 +456,14 @@ typedef struct
 
 //
 // Now what is a visplane, anyway?
-// 
-typedef struct
+//
+typedef struct visplane_s
 {
+  // Visplanes are pooled and looked up through a hash table (see r_plane.c),
+  // so they are no longer a fixed array -- this is the hash-chain / free-list
+  // link.  Removes the old fixed MAXVISPLANES cap and its overflow I_Error.
+  struct visplane_s	*next;
+
   fixed_t		height;
   int			picnum;
   int			lightlevel;

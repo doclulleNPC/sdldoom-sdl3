@@ -51,11 +51,43 @@ planefunction_t		ceilingfunc;
 //
 
 // Here comes the obnoxious "visplane".
-#define MAXVISPLANES	128
-visplane_t		visplanes[MAXVISPLANES];
-visplane_t*		lastvisplane;
+//
+// Visplanes used to live in a fixed visplanes[MAXVISPLANES] array bumped by
+// lastvisplane, which I_Error'd with "visplane overflow" on busy / hi-res
+// scenes.  They are now allocated on demand and kept in a hash table keyed by
+// (picnum, lightlevel, height); retired planes are parked on a free list and
+// reused, so the pool grows as needed and never overflows.  (Boom/killough.)
+#define MAXVISPLANES	128		// hash-table size; must be a power of two
+visplane_t*		visplanes[MAXVISPLANES];	// hash buckets
 visplane_t*		floorplane;
 visplane_t*		ceilingplane;
+
+static visplane_t*	freetail;		// head of the free list
+static visplane_t**	freehead = &freetail;	// where the next freed plane links
+
+#define visplane_hash(picnum,lightlevel,height) \
+  ((unsigned)((picnum)*3 + (lightlevel) + ((height)>>16)*7) & (MAXVISPLANES-1))
+
+//
+// R_NewVisPlane
+// Pull a visplane off the free list (or allocate a fresh one) and link it
+// into hash bucket `hash`.
+//
+static visplane_t* R_NewVisPlane (unsigned hash)
+{
+    visplane_t*	check = freetail;
+
+    if (!check)
+	check = Z_Malloc (sizeof(*check), PU_STATIC, 0);
+    else
+	if (!(freetail = freetail->next))
+	    freehead = &freetail;
+
+    check->next = visplanes[hash];
+    visplanes[hash] = check;
+
+    return check;
+}
 
 // ?
 #define MAXOPENINGS	(SCREENWIDTH*64)	// runtime limit (overflow check)
@@ -196,7 +228,12 @@ void R_ClearPlanes (void)
 	ceilingclip[i] = -1;
     }
 
-    lastvisplane = visplanes;
+    // Retire every plane used last frame onto the free list and empty the
+    // hash buckets.  freehead is left pointing at the end of the free list.
+    for (i=0 ; i<MAXVISPLANES ; i++)
+	for (*freehead = visplanes[i], visplanes[i] = NULL ; *freehead ; )
+	    freehead = &(*freehead)->next;
+
     lastopening = openings;
     
     // texture calculation
@@ -223,40 +260,36 @@ R_FindPlane
   int		lightlevel )
 {
     visplane_t*	check;
-	
+    unsigned	hash;
+
     if (picnum == skyflatnum)
     {
 	height = 0;			// all skys map together
 	lightlevel = 0;
     }
-	
-    for (check=visplanes; check<lastvisplane; check++)
+
+    hash = visplane_hash (picnum, lightlevel, height);
+
+    for (check=visplanes[hash] ; check ; check=check->next)
     {
 	if (height == check->height
 	    && picnum == check->picnum
 	    && lightlevel == check->lightlevel)
 	{
-	    break;
+	    return check;
 	}
     }
-    
-			
-    if (check < lastvisplane)
-	return check;
-		
-    if (lastvisplane - visplanes == MAXVISPLANES)
-	I_Error ("R_FindPlane: no more visplanes");
-		
-    lastvisplane++;
+
+    check = R_NewVisPlane (hash);
 
     check->height = height;
     check->picnum = picnum;
     check->lightlevel = lightlevel;
     check->minx = SCREENWIDTH;
     check->maxx = -1;
-    
+
     memset (check->top,0xff,sizeof(check->top));
-		
+
     return check;
 }
 
@@ -308,20 +341,25 @@ R_CheckPlane
 	pl->maxx = unionh;
 
 	// use the same one
-	return pl;		
+	return pl;
     }
-	
-    // make a new visplane
-    lastvisplane->height = pl->height;
-    lastvisplane->picnum = pl->picnum;
-    lastvisplane->lightlevel = pl->lightlevel;
-    
-    pl = lastvisplane++;
+
+    // make a new visplane (same flat/light/height, so it hashes to the same bucket)
+    {
+	unsigned	hash = visplane_hash (pl->picnum, pl->lightlevel, pl->height);
+	visplane_t*	newpl = R_NewVisPlane (hash);
+
+	newpl->height = pl->height;
+	newpl->picnum = pl->picnum;
+	newpl->lightlevel = pl->lightlevel;
+	pl = newpl;
+    }
+
     pl->minx = start;
     pl->maxx = stop;
 
     memset (pl->top,0xff,sizeof(pl->top));
-		
+
     return pl;
 }
 
@@ -373,22 +411,19 @@ void R_DrawPlanes (void)
     int			x;
     int			stop;
     int			angle;
-				
+    int			i;
+
 #ifdef RANGECHECK
-    if (ds_p - drawsegs > MAXDRAWSEGS)
-	I_Error ("R_DrawPlanes: drawsegs overflow (%i)",
-		 ds_p - drawsegs);
-    
-    if (lastvisplane - visplanes > MAXVISPLANES)
-	I_Error ("R_DrawPlanes: visplane overflow (%i)",
-		 lastvisplane - visplanes);
-    
+    // drawsegs and visplanes both grow dynamically now, so neither can
+    // overflow -- those two I_Error checks are gone.
+
     if (lastopening - openings > MAXOPENINGS)
 	I_Error ("R_DrawPlanes: opening overflow (%i)",
 		 lastopening - openings);
 #endif
 
-    for (pl = visplanes ; pl < lastvisplane ; pl++)
+    for (i=0 ; i<MAXVISPLANES ; i++)
+    for (pl = visplanes[i] ; pl ; pl=pl->next)
     {
 	if (pl->minx > pl->maxx)
 	    continue;
