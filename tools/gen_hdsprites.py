@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-# Pack the HD sprite PNGs (weapon + item/decoration packs) into a single WAD,
-# one lump per sprite frame (lump name = uppercased PNG basename), raw PNG
-# bytes.  hd_sprite.c reads this WAD directly and decodes via stb_image.
+# Pack the HD sprite PNGs into a single WAD, one lump per sprite frame (lump
+# name = uppercased PNG basename), raw PNG bytes.  hd_sprite.c reads this WAD
+# directly and decodes via stb_image.
 #
-# Source packs (drop in run/; either alone is fine -- a missing one is skipped):
-#   hd_weapons.pk3           HD weapon sprites
-#   marcelus_hd_sprites.pk3  Marcelus HD item/decoration sprites, extracted from
-#                            hdsprites9224.rar (see README -> Optional HD assets)
+# Source pack (drop in run/):
+#   marcelus_hd_soft.pk3   Marcelus HD sprites -- covers both the first-person
+#                          weapons and the items/decorations, all under
+#                          hires/sprites/ with vanilla DOOM frame names.
+#                          See README -> Optional HD assets for the download.
 import os, zipfile, struct, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 RUN  = os.path.join(ROOT, "..", "run")
-SRC  = ["hd_weapons.pk3", "marcelus_hd_sprites.pk3"]
+SRC  = ["marcelus_hd_soft.pk3"]
 OUT  = os.path.join(RUN, "hdsprites.wad")
 
 lumps = []          # (NAME, bytes)

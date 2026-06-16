@@ -3,7 +3,7 @@
 //
 // DESCRIPTION:
 //	HD (truecolor) sprite replacements.
-//	Reads run/hdsprites.wad (built from hd_weapons.pk3 + hd_items.pk3 by
+//	Reads run/hdsprites.wad (built from marcelus_hd_soft.pk3 by
 //	tools/gen_hdsprites.py) -- one PNG lump per sprite frame --
 //	and decodes frames on demand via stb_image into ARGB8888.  Used by the
 //	fullcolor sprite path in r_things.c; has no effect unless Fullcolor and
