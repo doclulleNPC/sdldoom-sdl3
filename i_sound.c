@@ -39,6 +39,10 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 
 #include "doomdef.h"
 
+// MOD: OGG music decoding (declarations only; stb_vorbis.c is its own TU).
+#define STB_VORBIS_HEADER_ONLY
+#include "stb_vorbis.c"
+
 
 // The number of internal mixing channels,
 //  the samples calculated for each mixing step,
@@ -364,13 +368,12 @@ void I_SetSfxVolume(int volume)
   snd_SfxVolume = volume;
 }
 
-// MUSIC API - dummy. Some code from DOS version.
+// Music volume (0..15 from the menu); applied to the OGG mix in the callback.
+extern int	i_music_gain;		// defined with the music code below
 void I_SetMusicVolume(int volume)
 {
-  // Internal state variable.
   snd_MusicVolume = volume;
-  // Now set volume on output device.
-  // Whatever( snd_MusciVolume );
+  i_music_gain = volume;		// 0..15
 }
 
 
@@ -669,63 +672,132 @@ I_InitSound()
 
 
 //
-// MUSIC API.
-// Still no music done.
-// Remains. Dummies.
+// MUSIC API -- OGG playback via stb_vorbis (MOD).
 //
+// DOOM's own music lumps are MUS/MIDI, which we don't synthesize; only OGG
+// replacement lumps (a music pack) actually play.  A non-OGG song registers as
+// "no music" and is silently skipped.  Decoded OGG is fed to a second SDL audio
+// stream bound to the same device as the SFX, so SDL mixes + resamples it.
+//
+int			i_music_gain = 15;	// 0..15 (set by I_SetMusicVolume)
+
+static stb_vorbis*	mus_vorbis;	// current OGG decoder, or NULL
+static SDL_AudioStream*	mus_stream;	// music stream bound to the SFX device
+static int		mus_channels = 2;
+static int		mus_loop;
+static int		mus_paused;
+
 void I_InitMusic(void)		{ }
 void I_ShutdownMusic(void)	{ }
 
-static int	looping=0;
-static int	musicdies=-1;
+// SDL pulls more music PCM through here (runs on the audio thread).
+static void SDLCALL
+I_MusicStreamCallback (void* ud, SDL_AudioStream* s, int additional, int total)
+{
+    float	buf[2048];
+    int		framecap = (int)(sizeof(buf)/sizeof(float)) / mus_channels;
+    float	gain = mus_paused ? 0.0f : (i_music_gain / 15.0f);
+
+    (void)ud; (void)total;
+    while (additional > 0)
+    {
+	int	frames = additional / (int)(mus_channels*sizeof(float));
+	int	got, i, n;
+
+	if (frames > framecap) frames = framecap;
+	if (frames <= 0) break;
+
+	got = mus_vorbis ? stb_vorbis_get_samples_float_interleaved
+			   (mus_vorbis, mus_channels, buf, frames*mus_channels) : 0;
+	if (got <= 0)
+	{
+	    if (mus_vorbis && mus_loop)
+	    {
+		stb_vorbis_seek_start (mus_vorbis);
+		got = stb_vorbis_get_samples_float_interleaved
+			(mus_vorbis, mus_channels, buf, frames*mus_channels);
+	    }
+	    if (got <= 0)
+	    {
+		memset (buf, 0, frames*mus_channels*sizeof(float));
+		got = frames;
+	    }
+	}
+	n = got*mus_channels;
+	for (i = 0 ; i < n ; i++)
+	    buf[i] *= gain;
+	SDL_PutAudioStreamData (s, buf, n*(int)sizeof(float));
+	additional -= n*(int)sizeof(float);
+    }
+}
+
+int I_RegisterSong(void* data, int length)
+{
+    const unsigned char*	p = data;
+    int				err;
+
+    // Only OGG ("OggS") plays; MUS/MIDI is skipped (no synth).
+    if (length < 4 || p[0]!='O' || p[1]!='g' || p[2]!='g' || p[3]!='S')
+	return 0;
+
+    mus_vorbis = stb_vorbis_open_memory (p, length, &err, NULL);
+    return mus_vorbis ? 1 : 0;
+}
 
 void I_PlaySong(int handle, int looping)
 {
-  // UNUSED.
-  handle = looping = 0;
-  musicdies = gametic + TICRATE*30;
+    stb_vorbis_info	info;
+    SDL_AudioSpec	src, dst;
+
+    if (!mus_vorbis || !handle)
+	return;
+
+    info = stb_vorbis_get_info (mus_vorbis);
+    mus_channels = info.channels;
+    mus_loop = looping;
+    mus_paused = 0;
+
+    src.format = SDL_AUDIO_F32;   src.channels = mus_channels;  src.freq = info.sample_rate;
+    dst.format = SDL_AUDIO_S16;   dst.channels = 2;             dst.freq = SAMPLERATE;
+
+    mus_stream = SDL_CreateAudioStream (&src, &dst);
+    if (!mus_stream)
+	return;
+    SDL_SetAudioStreamGetCallback (mus_stream, I_MusicStreamCallback, NULL);
+    SDL_BindAudioStream (SDL_GetAudioStreamDevice(audiostream), mus_stream);
 }
 
-void I_PauseSong (int handle)
-{
-  // UNUSED.
-  handle = 0;
-}
-
-void I_ResumeSong (int handle)
-{
-  // UNUSED.
-  handle = 0;
-}
+void I_PauseSong (int handle)	{ (void)handle; mus_paused = 1; }
+void I_ResumeSong (int handle)	{ (void)handle; mus_paused = 0; }
 
 void I_StopSong(int handle)
 {
-  // UNUSED.
-  handle = 0;
-  
-  looping = 0;
-  musicdies = 0;
+    (void)handle;
+    if (mus_stream)			// destroying the stream stops the callback
+    {
+	SDL_DestroyAudioStream (mus_stream);
+	mus_stream = NULL;
+    }
 }
 
 void I_UnRegisterSong(int handle)
 {
-  // UNUSED.
-  handle = 0;
+    (void)handle;
+    if (mus_stream)
+    {
+	SDL_DestroyAudioStream (mus_stream);
+	mus_stream = NULL;
+    }
+    if (mus_vorbis)
+    {
+	stb_vorbis_close (mus_vorbis);
+	mus_vorbis = NULL;
+    }
 }
 
-int I_RegisterSong(void* data)
-{
-  // UNUSED.
-  data = NULL;
-  
-  return 1;
-}
-
-// Is the song playing?
 int I_QrySongPlaying(int handle)
 {
-  // UNUSED.
-  handle = 0;
-  return looping || musicdies > gametic;
+    (void)handle;
+    return mus_vorbis != NULL;
 }
 
