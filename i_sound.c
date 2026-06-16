@@ -42,6 +42,7 @@ rcsid[] = "$Id: i_unix.c,v 1.5 1997/02/03 22:45:10 b1 Exp $";
 // MOD: OGG music decoding (declarations only; stb_vorbis.c is its own TU).
 #define STB_VORBIS_HEADER_ONLY
 #include "stb_vorbis.c"
+#include "i_mus.h"	// MOD: native MUS playback (OPL-style FM synth)
 
 
 // The number of internal mixing channels,
@@ -686,6 +687,8 @@ static SDL_AudioStream*	mus_stream;	// music stream bound to the SFX device
 static int		mus_channels = 2;
 static int		mus_loop;
 static int		mus_paused;
+static int		mus_kind;	// 0 none, 1 OGG (stb_vorbis), 2 MUS (synth)
+static int		mus_geninit;	// MUS_Init() done?
 
 void I_InitMusic(void)		{ }
 void I_ShutdownMusic(void)	{ }
@@ -694,40 +697,62 @@ void I_ShutdownMusic(void)	{ }
 static void SDLCALL
 I_MusicStreamCallback (void* ud, SDL_AudioStream* s, int additional, int total)
 {
-    float	buf[2048];
-    int		framecap = (int)(sizeof(buf)/sizeof(float)) / mus_channels;
     float	gain = mus_paused ? 0.0f : (i_music_gain / 15.0f);
 
     (void)ud; (void)total;
-    while (additional > 0)
+
+    if (mus_kind == 2)			// MUS: native synth, S16 stereo
     {
-	int	frames = additional / (int)(mus_channels*sizeof(float));
-	int	got, i, n;
-
-	if (frames > framecap) frames = framecap;
-	if (frames <= 0) break;
-
-	got = mus_vorbis ? stb_vorbis_get_samples_float_interleaved
-			   (mus_vorbis, mus_channels, buf, frames*mus_channels) : 0;
-	if (got <= 0)
+	short	buf[1024];		// 512 stereo frames
+	while (additional > 0)
 	{
-	    if (mus_vorbis && mus_loop)
-	    {
-		stb_vorbis_seek_start (mus_vorbis);
-		got = stb_vorbis_get_samples_float_interleaved
-			(mus_vorbis, mus_channels, buf, frames*mus_channels);
-	    }
+	    int	frames = additional / (int)(2*sizeof(short));
+	    int	i;
+	    if (frames > 512) frames = 512;
+	    if (frames <= 0) break;
+	    MUS_Render (buf, frames);
+	    for (i = 0 ; i < frames*2 ; i++)
+		buf[i] = (short)(buf[i] * gain);
+	    SDL_PutAudioStreamData (s, buf, frames*2*(int)sizeof(short));
+	    additional -= frames*2*(int)sizeof(short);
+	}
+	return;
+    }
+
+    // OGG: stb_vorbis, float interleaved
+    {
+	float	buf[2048];
+	int	framecap = (int)(sizeof(buf)/sizeof(float)) / mus_channels;
+	while (additional > 0)
+	{
+	    int	frames = additional / (int)(mus_channels*sizeof(float));
+	    int	got, i, n;
+
+	    if (frames > framecap) frames = framecap;
+	    if (frames <= 0) break;
+
+	    got = mus_vorbis ? stb_vorbis_get_samples_float_interleaved
+			       (mus_vorbis, mus_channels, buf, frames*mus_channels) : 0;
 	    if (got <= 0)
 	    {
-		memset (buf, 0, frames*mus_channels*sizeof(float));
-		got = frames;
+		if (mus_vorbis && mus_loop)
+		{
+		    stb_vorbis_seek_start (mus_vorbis);
+		    got = stb_vorbis_get_samples_float_interleaved
+			    (mus_vorbis, mus_channels, buf, frames*mus_channels);
+		}
+		if (got <= 0)
+		{
+		    memset (buf, 0, frames*mus_channels*sizeof(float));
+		    got = frames;
+		}
 	    }
+	    n = got*mus_channels;
+	    for (i = 0 ; i < n ; i++)
+		buf[i] *= gain;
+	    SDL_PutAudioStreamData (s, buf, n*(int)sizeof(float));
+	    additional -= n*(int)sizeof(float);
 	}
-	n = got*mus_channels;
-	for (i = 0 ; i < n ; i++)
-	    buf[i] *= gain;
-	SDL_PutAudioStreamData (s, buf, n*(int)sizeof(float));
-	additional -= n*(int)sizeof(float);
     }
 }
 
@@ -736,29 +761,47 @@ int I_RegisterSong(void* data, int length)
     const unsigned char*	p = data;
     int				err;
 
-    // Only OGG ("OggS") plays; MUS/MIDI is skipped (no synth).
-    if (length < 4 || p[0]!='O' || p[1]!='g' || p[2]!='g' || p[3]!='S')
-	return 0;
+    mus_kind = 0;
 
-    mus_vorbis = stb_vorbis_open_memory (p, length, &err, NULL);
-    return mus_vorbis ? 1 : 0;
+    // OGG replacement music?
+    if (length >= 4 && p[0]=='O' && p[1]=='g' && p[2]=='g' && p[3]=='S')
+    {
+	mus_vorbis = stb_vorbis_open_memory (p, length, &err, NULL);
+	if (mus_vorbis) { mus_kind = 1; return 1; }
+	return 0;
+    }
+
+    // Native MUS via the FM synth.
+    if (!mus_geninit) { MUS_Init (); mus_geninit = 1; }
+    if (MUS_Register (p, length)) { mus_kind = 2; return 2; }
+
+    return 0;	// e.g. raw MIDI -- unsupported
 }
 
 void I_PlaySong(int handle, int looping)
 {
-    stb_vorbis_info	info;
     SDL_AudioSpec	src, dst;
 
-    if (!mus_vorbis || !handle)
+    if (!handle)
 	return;
 
-    info = stb_vorbis_get_info (mus_vorbis);
-    mus_channels = info.channels;
-    mus_loop = looping;
+    dst.format = SDL_AUDIO_S16;   dst.channels = 2;   dst.freq = SAMPLERATE;
     mus_paused = 0;
 
-    src.format = SDL_AUDIO_F32;   src.channels = mus_channels;  src.freq = info.sample_rate;
-    dst.format = SDL_AUDIO_S16;   dst.channels = 2;             dst.freq = SAMPLERATE;
+    if (mus_kind == 1)			// OGG
+    {
+	stb_vorbis_info info = stb_vorbis_get_info (mus_vorbis);
+	mus_channels = info.channels;
+	mus_loop = looping;
+	src.format = SDL_AUDIO_F32; src.channels = mus_channels; src.freq = info.sample_rate;
+    }
+    else if (mus_kind == 2)		// MUS
+    {
+	MUS_Start (looping);
+	src.format = SDL_AUDIO_S16; src.channels = 2; src.freq = SAMPLERATE;
+    }
+    else
+	return;
 
     mus_stream = SDL_CreateAudioStream (&src, &dst);
     if (!mus_stream)
@@ -778,6 +821,8 @@ void I_StopSong(int handle)
 	SDL_DestroyAudioStream (mus_stream);
 	mus_stream = NULL;
     }
+    if (mus_kind == 2)
+	MUS_Stop ();
 }
 
 void I_UnRegisterSong(int handle)
@@ -788,16 +833,19 @@ void I_UnRegisterSong(int handle)
 	SDL_DestroyAudioStream (mus_stream);
 	mus_stream = NULL;
     }
+    if (mus_kind == 2)
+	MUS_Stop ();
     if (mus_vorbis)
     {
 	stb_vorbis_close (mus_vorbis);
 	mus_vorbis = NULL;
     }
+    mus_kind = 0;
 }
 
 int I_QrySongPlaying(int handle)
 {
     (void)handle;
-    return mus_vorbis != NULL;
+    return mus_kind != 0;
 }
 
