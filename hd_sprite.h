@@ -26,4 +26,7 @@ typedef struct
 // Lazily opens hdsprites.wad and decodes on first use.
 hdimage_t* HD_Get (const char* name8);
 
+// Free all decoded HD sprite frames (called at level load).
+void HD_SpriteReset (void);
+
 #endif

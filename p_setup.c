@@ -45,6 +45,9 @@ rcsid[] = "$Id: p_setup.c,v 1.5 1997/02/03 22:45:12 b1 Exp $";
 
 #include "doomstat.h"
 
+#include "hd_texture.h"		// MOD: HD_LevelReset
+#include "hd_sprite.h"		// MOD: HD_SpriteReset
+
 
 void	P_SpawnMapThing (mapthing_t*	mthing);
 
@@ -617,6 +620,10 @@ P_SetupLevel
 #endif
 	Z_FreeTags (PU_LEVEL, PU_PURGELEVEL-1);
 
+    // MOD: free decoded HD textures/sprites so they don't accumulate across
+    // maps over a session (the main cause of the gradual slowdown).
+    HD_LevelReset ();
+    HD_SpriteReset ();
 
     // UNUSED W_Profile ();
     P_InitThinkers ();

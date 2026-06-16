@@ -23,4 +23,8 @@ void HD_TexCacheInit (int numtextures, int numflats);
 hdimage_t* HD_GetTexture (int texnum, const char* name8);
 hdimage_t* HD_GetFlat (int flatnum, const char* name8);
 
+// Free all decoded HD textures/flats (called at level load so maps don't
+// accumulate decoded images across a session).
+void HD_LevelReset (void);
+
 #endif
