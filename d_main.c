@@ -70,6 +70,7 @@ static int access(char *file, int mode)
 #include "m_argv.h"
 #include "m_misc.h"
 #include "m_menu.h"
+#include "c_console.h"
 
 #include "i_system.h"
 #include "i_sound.h"
@@ -181,6 +182,8 @@ void D_ProcessEvents (void)
     for ( ; eventtail != eventhead ; eventtail = (++eventtail)&(MAXEVENTS-1) )
     {
 	ev = &events[eventtail];
+	if (C_Responder (ev))
+	    continue;               // console ate the event (or toggled)
 	if (M_Responder (ev))
 	    continue;               // menu ate the event
 	G_Responder (ev);
@@ -329,6 +332,7 @@ void D_Display (void)
 
     // menus go directly to the screen
     M_Drawer ();          // menu is drawn even on top of everything
+    C_Drawer ();          // console drops over everything, including the menu
     NetUpdate ();         // send out any new accumulation
 
 
@@ -1106,6 +1110,8 @@ printf("added\n");
 
     printf ("HU_Init: Setting up heads up display.\n");
     HU_Init ();
+
+    C_Init ();		// console (uses hu_font, so after HU_Init)
 
     printf ("ST_Init: Init status bar.\n");
     ST_Init ();
