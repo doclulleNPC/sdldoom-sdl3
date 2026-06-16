@@ -26,6 +26,10 @@ This continues where the long-dormant `sdldoom-1.10-mod` left off.
 - **Always-Run toggle** — the Run key now toggles persistent run instead of
   needing to be held.
 - **Mouse grab** in windowed mode (relative-motion turning; releases on alt-tab).
+- **Optional HD / mod assets** — terrain-dependent footstep sounds, a truecolor
+  ("fullcolor") 3D view, and HD sprite / wall-texture replacements. Each is an
+  opt-in toggle under **Options → Mod**, persisted across runs. The assets are
+  built from third-party mod source — see [Optional HD / mod assets](#optional-hd--mod-assets).
 
 ## Building
 
@@ -65,6 +69,35 @@ your own copy:
 
 Useful flags: `-fullscreen`, `-warp <map>`, `-skill N`, `-render N` / `-aspect`,
 `-nograbmouse`, `-file <pwad>`. See `CLAUDE.md` and `README.b` for more.
+
+## Optional HD / mod assets
+
+The footstep, fullcolor and HD sprite/texture features are **opt-in** (enable
+them under **Options → Mod**). They depend on asset WADs that are **not**
+distributed here — they are generated from third-party GZDoom mod packs whose
+content is under the mod authors' own terms. Both the source `.pk3`s and the
+built `.wad`s are gitignored; the game loads the `.wad`s from the working
+directory (i.e. next to `doom.exe`, the `run/` folder).
+
+The generator scripts live in `tools_footsteps/` and expect the source packs in
+`run/`. They require **Python 3**; the footsteps generator additionally needs
+**`ffmpeg`** on `PATH` (it transcodes the source audio to DMX format).
+
+| Feature      | Get the source pack from                                         | Place in `run/` as                | Build with                                  | Produces            |
+|--------------|------------------------------------------------------------------|-----------------------------------|---------------------------------------------|---------------------|
+| Footsteps    | [DaZombieKiller/zk-resources](https://github.com/DaZombieKiller/zk-resources) | `footsteps.pk3`                   | `python tools_footsteps/gen_footsteps.py`   | `run/footsteps.wad` (and regenerates `footstep_tables.h`) |
+| HD textures  | [KuriKai/DHTP](https://github.com/KuriKai/DHTP/)                 | `hd_textures.pk3`                 | `python tools_footsteps/gen_hdtextures.py`  | `run/hdtextures.wad` |
+| HD sprites   | _(your GZDoom HD weapons / items packs — TODO: add source URL)_  | `hd_weapons.pk3`, `hd_items.pk3`  | `python tools_footsteps/gen_hdsprites.py`   | `run/hdsprites.wad`  |
+
+Notes:
+
+- **Footsteps** also regenerates the in-tree `footstep_tables.h` (flat→terrain
+  map and per-terrain sound variants) from the pack's `sndinfo.txt` /
+  `language.txt`, so rerun it if you update the source pack.
+- The scripts apply the relevant GZDoom filter precedence (`filter/doom` then
+  `filter/doom.doom2`) and only pack DOOM II–relevant, ≤8-char lump names.
+- Once the `.wad`s are in `run/`, launch the game and enable each feature in
+  **Options → Mod**; the toggles are saved to `.doomrc`.
 
 ## License
 
