@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SDLDoom 1.10 — originally Sam Lantinga's port of id Software's Linux DOOM (the Jan 10 1997 "Boom"/`b.` source drop) to SDL. The engine logic is the original id source; the system layer is confined almost entirely to the `i_*` (interface/system) modules.
 
-**This tree has been ported from SDL 1.x to SDL 3 and made 64-bit clean** (it builds and runs as a Win64 binary with MinGW-w64). The SDL1→SDL3 work lives in `i_video.c` (window/renderer/streaming-texture instead of a palettized display surface), `i_sound.c` (`SDL_AudioStream` callback instead of the removed `SDL_OpenAudio`), `i_system.c`, and `i_main.c` (`SDL_MAIN_HANDLED`). `i_net.c` was reduced to a portable single-player stub (the old BSD-socket multiplayer is not supported on this build).
+**This tree has been ported from SDL 1.x to SDL 3 and made 64-bit clean** (it builds and runs as a Win64 binary with MinGW-w64). The SDL1→SDL3 work lives in `i_video.c` (window/renderer/streaming-texture instead of a palettized display surface), `i_sound.c` (`SDL_AudioStream` callback instead of the removed `SDL_OpenAudio`), `i_system.c`, and `i_main.c` (`SDL_MAIN_HANDLED`). `i_net.c` was reduced to a portable single-player stub (the old BSD-socket multiplayer is not supported on this build); multiplayer is instead provided by a clean-room **Chocolate/Crispy-Doom network client** (see *Multiplayer* below).
 
 Requires a DOOM IWAD (`doom2.wad`, `doom.wad`, `doom1.wad`, …) at runtime — no artwork ships here. The registered/commercial detection and the disabling of homebrew (non-id) maps are intentionally left in the source for licensing reasons (see `README.b`).
 
@@ -63,6 +63,51 @@ lumps exist for them, so they render via `M_WriteTextBig`/`M_WriteText` at 2x):
   controls. `M_KeyVars[]` points at the live `key_*` globals (`g_game.c`) and
   `M_KeyLabels[]` names them; selecting a row enters a "PRESS KEY" capture state.
   Bindings persist through the same `defaults[]` mechanism as the stock keys.
+
+### Multiplayer (Chocolate/Crispy-Doom interop)
+
+This build talks the **Chocolate-Doom network protocol** (which Crispy-Doom
+shares), so it can join a `chocolate-server` and play co-op/DM against Chocolate
+or Crispy peers. It is a clean-room reimplementation of the *wire format* (an
+interop fact) — none of Chocolate's GPL source is used. Two new modules:
+
+- **`i_udp.c`/`.h`** — the transport + packet layer: a big-endian growable
+  packet buffer (`NET_WriteInt8/16/32/String`, signed readers, SHA1 blobs)
+  matching Chocolate's `net_packet.c`, POSIX/winsock UDP sockets, and the
+  standalone diagnostics `-querychoc` (server QUERY) and `-chocsyn` (SYN
+  handshake test). **Naming caveat:** `M_CheckParm` prefix-matches, so a new
+  flag must not have an existing flag as a prefix — this is why the SYN test is
+  `-chocsyn`, not `-connectchoc` (which `-connect` would shadow).
+- **`d_netcl.c`/`.h`** — the client state machine: reliable-packet layer
+  (`type|0x8000` + seq byte, RELIABLE_ACK), connection states (SYN → lobby →
+  LAUNCH → GAMESTART → in-game), keepalive/timeout, the gamesettings codec, and
+  the GAMEDATA send/receive **tic windows** (ticcmd-diff codec, full-ticcmd
+  decode, sequence windows with acks/resends, `NET_ExpandTicNum`). It exposes a
+  merged-tic ring (`D_NetCl_GetTic`) the game loop pulls from.
+
+**Loop integration (`d_net.c`):** a `choc_client` flag (set by `-connect
+<host[:port]> [version]`) gates parallel `NetUpdate_Choc`/`TryRunTics_Choc`
+that mirror the vanilla functions but source local tics via
+`G_BuildTiccmd → D_NetCl_SendTiccmd` and drain the server's merged tics into
+`netcmds[][]` for `G_Ticker`, in lockstep with `gametic/ticdup`. The vanilla
+single-player path is untouched (`choc_client=false`). `D_CheckNetGame_Choc`
+joins (acting as controller), then adopts the server's authoritative settings
+(consoleplayer, ticdup, deathmatch, skill/episode/map). `gamemission` is
+hardwired to `doom` in this engine, so a protocol-valid mission is derived
+(`commercial → doom2`) for the server's `D_ValidGameMode` check.
+
+- Flags: `-connect <host>` (join), `-netplayers <n>` (host waits for n players
+  in the lobby before launching; default 1 = solo/relay).
+- **Lockstep determinism caveat:** co-op requires our simulation to stay
+  bit-identical with the peer's every tic or the vanilla `consistancy` check
+  (`g_game.c`, fires once `gametic>BACKUPTICS`) `I_Error`s out. **MOD features
+  that perturb the playsim must be off in net games** — `g_game.c` already
+  gates `mod_jump` (BT_JUMP moves the player; a vanilla peer ignores the bit)
+  and `mod_freelook` (lookdir drives aim but isn't in the ticcmd) on `!netgame`.
+  Footsteps (private `FS_Rand`, audio only) and all render-only MOD features
+  (crosshair, HD textures/sprites, smoothing/AA) are sim-safe and stay on. When
+  adding any MOD feature that touches `p_*`/`m_random`, gate it on `!netgame`.
+- Savegames remain not 64-bit-correct (see below); avoid load/save in netplay.
 
 ### 64-bit porting notes (important when touching old DOOM code)
 
