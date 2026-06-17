@@ -26,7 +26,10 @@
 static const char rcsid[] = "$Id: d_net.c,v 1.3 1997/02/03 22:01:47 b1 Exp $";
 
 
+#include <stdlib.h>
+
 #include "m_menu.h"
+#include "m_argv.h"
 #include "i_system.h"
 #include "i_video.h"
 #include "i_net.h"
@@ -701,6 +704,8 @@ static void D_CheckNetGame_Choc (void)
     netcl_settings_t	want, got;
     int			i;
     int			mission;
+    int			min_players = 1;
+    int			pp;
 
     // This engine hardwires gamemission=doom; derive a mission valid for the
     // protocol's D_ValidGameMode check (commercial mode requires doom2/tnt/plut).
@@ -717,9 +722,16 @@ static void D_CheckNetGame_Choc (void)
     want.num_players = 1;
     want.consoleplayer = 0;
 
-    printf ("Connecting to %s as a Chocolate/Crispy client...\n", choc_host);
+    // -netplayers <n>: wait for n players in the lobby before launching (the
+    // controller hosts; other peers join and follow).  Default 1 (solo/relay).
+    pp = M_CheckParm ("-netplayers");
+    if (pp && pp < myargc-1)
+	min_players = atoi (myargv[pp+1]);
+
+    printf ("Connecting to %s as a Chocolate/Crispy client (waiting for %d player(s))...\n",
+	    choc_host, min_players);
     if (!D_NetCl_JoinGame (choc_host, choc_version, gamemode, mission,
-			   "sdldoom", &want, &got))
+			   "sdldoom", min_players, &want, &got))
 	I_Error ("Failed to join network game at %s", choc_host);
 
     netgame = true;

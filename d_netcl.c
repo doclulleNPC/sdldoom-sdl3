@@ -80,6 +80,11 @@ static reliable_t*	reliable_head;
 static unsigned		last_send_time;
 static unsigned		last_recv_time;
 
+// lobby status (from WAITING_DATA): how many players are connected and whether
+// we are the controlling client (the only one whose LAUNCH the server honors).
+static int		lobby_players = 1;
+static int		lobby_is_controller;
+
 // send side (our tics)
 static ticcmd_t		last_sent;
 static sendslot_t	send_queue[NET_BACKUPTICS];
@@ -516,8 +521,20 @@ static void ParsePacket (net_packet_t* p)
 	  disconnected = 1; }
 	break;
       case NET_PACKET_TYPE_KEEPALIVE:
+	break;
       case NET_PACKET_TYPE_WAITING_DATA:
-	break;					// lobby status: nothing to do here
+	{   // net_waitdata_t header: num_players, num_drones, ready_players,
+	    // max_players, is_controller, ... (we only need the first + 5th)
+	    unsigned num_players, num_drones, ready, maxp, is_ctrl;
+	    if (NET_ReadInt8 (p, &num_players) && NET_ReadInt8 (p, &num_drones)
+	     && NET_ReadInt8 (p, &ready) && NET_ReadInt8 (p, &maxp)
+	     && NET_ReadInt8 (p, &is_ctrl))
+	    {
+		lobby_players = num_players;
+		lobby_is_controller = is_ctrl;
+	    }
+	}
+	break;
       case NET_PACKET_TYPE_LAUNCH:
 	if (clientstate == CL_WAITING_LAUNCH)
 	{ NET_ReadInt8 (p, &np); clientstate = CL_WAITING_START; }
@@ -623,16 +640,32 @@ static boolean PumpUntil (boolean (*done)(void), int timeout_ms)
 // Full blocking join: connect -> lobby -> launch -> gamestart.  We act as the
 // controller (send LAUNCH, then GAMESTART with `want`).  On success the
 // server's authoritative settings are copied to *got and we are IN_GAME.
+int  D_NetCl_LobbyPlayers (void)	{ return lobby_players; }
+boolean D_NetCl_IsController (void)	{ return lobby_is_controller; }
+
 boolean D_NetCl_JoinGame (const char* hostport, const char* version,
 			  int gamemode, int gamemission, const char* playername,
-			  const netcl_settings_t* want, netcl_settings_t* got)
+			  int min_players, const netcl_settings_t* want,
+			  netcl_settings_t* got)
 {
+    unsigned t0;
+
     if (!D_NetCl_Connect (hostport, version, gamemode, gamemission, playername))
 	return false;
-    D_NetCl_LaunchGame ();
-    if (!PumpUntil (D_NetCl_LobbyLaunched, 5000)) return false;
+
+    // Wait in the lobby until enough players have joined (up to 60s).  The
+    // controller then triggers the launch; non-controllers just wait for it.
+    t0 = NET_GetTimeMS ();
+    while (lobby_players < min_players && !disconnected
+	   && (int)(NET_GetTimeMS () - t0) < 60000)
+    { D_NetCl_Run (); usleep (5000); }
+
+    if (lobby_is_controller || min_players <= 1)
+	D_NetCl_LaunchGame ();
+
+    if (!PumpUntil (D_NetCl_LobbyLaunched, 30000)) return false;
     D_NetCl_StartGame (want);
-    if (!PumpUntil (D_NetCl_InGame, 5000)) return false;
+    if (!PumpUntil (D_NetCl_InGame, 30000)) return false;
     if (got) *got = settings;
     return true;
 }
@@ -736,7 +769,7 @@ void I_NetClientTest (const char* hostport, const char* version,
     want.num_players = 1; want.consoleplayer = 0;
 
     if (!D_NetCl_JoinGame (hostport, version, gamemode, gamemission,
-			   "sdldoom", &want, NULL))
+			   "sdldoom", 1, &want, NULL))
     {
 	printf ("  join failed (no response / rejected / no game start).\n");
 	D_NetCl_Disconnect ();

@@ -68,10 +68,14 @@ int		D_NetCl_RecvTic (void);
 boolean		D_NetCl_TicReady (int tic);
 void		D_NetCl_GetTic (int tic, ticcmd_t* cmds, boolean* ingame, int count);
 
-// Blocking join (connect -> lobby -> launch -> gamestart).  We are controller.
+// Blocking join: connect -> wait in lobby for min_players -> launch (if we are
+// the controller) -> gamestart.  min_players<=1 launches immediately.
 boolean		D_NetCl_JoinGame (const char* hostport, const char* version,
 				  int gamemode, int gamemission, const char* playername,
-				  const netcl_settings_t* want, netcl_settings_t* got);
+				  int min_players, const netcl_settings_t* want,
+				  netcl_settings_t* got);
+int		D_NetCl_LobbyPlayers (void);
+boolean		D_NetCl_IsController (void);
 
 // Disconnect cleanly (sends DISCONNECT and waits briefly for the ack).
 void		D_NetCl_Disconnect (void);
