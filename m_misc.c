@@ -219,6 +219,7 @@ extern	int	mod_footsteps;
 extern	int	mod_fullcolor;
 extern	int	mod_hdsprites;
 extern	int	mod_hdtextures;
+extern	int	mod_voxels;
 
 
 extern char*	chat_macros[];
@@ -291,6 +292,7 @@ default_t	defaults[] =
     {"mod_fullcolor",&mod_fullcolor, 0},
     {"mod_hdsprites",&mod_hdsprites, 0},
     {"mod_hdtextures",&mod_hdtextures, 0},
+    {"mod_voxels",&mod_voxels, 0},
 
 #ifndef __BEOS__
     {"chatmacro0", (int *) &chat_macros[0], (intptr_t) HUSTR_CHATMACRO0 },

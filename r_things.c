@@ -42,11 +42,13 @@ rcsid[] = "$Id: r_things.c,v 1.5 1997/02/03 16:47:56 b1 Exp $";
 #include "doomstat.h"
 
 #include "hd_sprite.h"
+#include "hd_voxel.h"
 
 // MOD: fullcolor HD sprite replacements -- alpha-blit a truecolor PNG over the
 // truecolor framebuffer in place of the 8-bit sprite (weapons + world things).
 extern int		truecolor;	// i_video.c (fullcolor active this frame)
 extern int		mod_hdsprites;	// g_game.c / doomstat.h
+extern int		mod_voxels;	// g_game.c / doomstat.h
 extern unsigned int*	screen32;	// i_video.c truecolor framebuffer
 extern double		fc_lightdim[32];// i_video.c per-light-level brightness
 extern int		viewwindowx;	// r_draw.c (view rect within the screen)
@@ -511,6 +513,12 @@ R_DrawVisSprite
 
     patch = W_CacheLumpNum (vis->patch+firstspritelump, PU_CACHE);
 
+    // MOD: voxel model replacement, if one exists for this frame (takes
+    // precedence over the HD/8-bit sprite).
+    if (truecolor && mod_voxels
+	&& HD_DrawVoxel (vis, lumpinfo[vis->patch+firstspritelump].name))
+	return;
+
     // MOD: fullcolor HD sprite replacement, if one exists for this frame.
     if (truecolor && mod_hdsprites)
     {
@@ -670,6 +678,7 @@ void R_ProjectSprite (mobj_t* thing)
     vis->gz = thing->z;
     vis->gzt = thing->z + spritetopoffset[lump];
     vis->texturemid = vis->gzt - viewz;
+    vis->mobjangle = thing->angle;	// MOD: for voxel model yaw
     vis->x1 = x1 < 0 ? 0 : x1;
     vis->x2 = x2 >= viewwidth ? viewwidth-1 : x2;	
     iscale = FixedDiv (FRACUNIT, xscale);

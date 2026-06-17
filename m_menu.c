@@ -215,6 +215,7 @@ void M_ModFootsteps(int choice);
 void M_ModFullcolor(int choice);
 void M_ModHDSprites(int choice);
 void M_ModHDTextures(int choice);
+void M_ModVoxels(int choice);
 void M_DrawMod(void);
 void I_SetSmoothing(int on);		// i_video.c
 
@@ -490,6 +491,7 @@ enum
     mod_fullcolor_item,
     mod_hdsprites_item,
     mod_hdtextures_item,
+    mod_voxels_item,
     mod_end
 } mod_e;
 
@@ -502,7 +504,8 @@ menuitem_t ModMenu[]=
     {2,"",	M_ModFootsteps,'o'},
     {2,"",	M_ModFullcolor,'u'},
     {2,"",	M_ModHDSprites,'h'},
-    {2,"",	M_ModHDTextures,'t'}
+    {2,"",	M_ModHDTextures,'t'},
+    {2,"",	M_ModVoxels,'v'}
 };
 
 menu_t  ModDef =
@@ -1129,6 +1132,10 @@ void M_DrawMod(void)
     M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_hdtextures_item, "HD Textures");
     M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_hdtextures_item,
 		mod_hdtextures ? "On" : "Off");
+
+    M_WriteText(ModDef.x, ModDef.y + LINEHEIGHT*mod_voxels_item, "Voxels");
+    M_WriteText(ModDef.x + 130, ModDef.y + LINEHEIGHT*mod_voxels_item,
+		mod_voxels ? "On" : "Off");
 }
 
 void M_ModJump(int choice)
@@ -1184,6 +1191,14 @@ void M_ModHDTextures(int choice)
     mod_hdtextures = !mod_hdtextures;
     if (mod_hdtextures)
 	mod_fullcolor = 1;	// HD textures are truecolor (needs Fullcolor)
+    M_SaveDefaults();
+}
+
+void M_ModVoxels(int choice)
+{
+    mod_voxels = !mod_voxels;
+    if (mod_voxels)
+	mod_fullcolor = 1;	// voxels render into the truecolor framebuffer
     M_SaveDefaults();
 }
 

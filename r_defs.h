@@ -405,7 +405,10 @@ typedef struct vissprite_s
     lighttable_t*	colormap;
    
     int			mobjflags;
-    
+
+    // MOD: actor facing, for voxel model yaw (hd_voxel.c)
+    angle_t		mobjangle;
+
 } vissprite_t;
 
 

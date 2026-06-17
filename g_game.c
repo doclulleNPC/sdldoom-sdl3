@@ -174,6 +174,7 @@ int		mod_footsteps;
 int		mod_fullcolor;
 int		mod_hdsprites;
 int		mod_hdtextures;
+int		mod_voxels;
 
 // MOD: clamp for the free-look pitch (BASE-resolution horizon-shift pixels).
 #define LOOKDIRMAX	56

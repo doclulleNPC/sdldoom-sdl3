@@ -47,6 +47,7 @@ rcsid[] = "$Id: p_setup.c,v 1.5 1997/02/03 22:45:12 b1 Exp $";
 
 #include "hd_texture.h"		// MOD: HD_LevelReset
 #include "hd_sprite.h"		// MOD: HD_SpriteReset
+#include "hd_voxel.h"		// MOD: HD_VoxelReset
 
 
 void	P_SpawnMapThing (mapthing_t*	mthing);
@@ -624,6 +625,7 @@ P_SetupLevel
     // maps over a session (the main cause of the gradual slowdown).
     HD_LevelReset ();
     HD_SpriteReset ();
+    HD_VoxelReset ();
 
     // UNUSED W_Profile ();
     P_InitThinkers ();
