@@ -33,12 +33,27 @@ with `(int)` casts. On LLP64 every one of those is silent corruption.
 - **Pointer↔int alignment math** (`(int)p + 255 & ~255`) truncates the high 32
   bits → use `uintptr_t`. `lumpinfo_t.handle` holds a `FILE*`, not an `int`.
   Config `default_t` string defaults use `intptr_t`. *(73174aa)*
-- **Savegames.** `p_saveg.c` swizzled sector/state/player **indices into pointer
-  fields** and read them back with `(int)` (truncated on LP64); now
-  `intptr_t`/`uintptr_t`. And `G_DoSaveGame` wrote into `screens[1]` with a fixed
-  `0x2c000` cap that busy maps overran once archived structs grew 8-byte
-  pointers; now a level-sized `Z_Malloc` buffer with a real bound. **Savegames
-  are 64-bit-correct on this build.** *(148b89f)*
+- **Savegames (two distinct 64-bit bugs).** *Symptom:* on a 64-bit build,
+  saving and reloading produced wrong world state and could crash on busy maps;
+  it was long carried in the docs as a known limitation. *Root cause + fix:*
+  - **Index↔pointer swizzle truncation.** To make pointers serializable,
+    `p_saveg.c` stores object **indices in the pointer fields** themselves
+    (e.g. a `sector_t*` field temporarily holds the sector number) and restores
+    them on load. Both directions cast through `(int)`, which on LP64/LLP64
+    truncates the 8-byte pointer slot to 32 bits → restored references pointed
+    at garbage. Now uses `intptr_t`/`uintptr_t` so the full pointer width round-
+    trips. *(Note: this stores native pointer-width values, so a save file is
+    correct for the build that wrote it, not portable between 32- and 64-bit
+    builds — acceptable since this is a 64-bit-only port.)*
+  - **Fixed save-buffer overrun.** `G_DoSaveGame` serialized into `screens[1]`
+    with a hardcoded `0x2c000` (176 KB) cap sized for 32-bit structs. With
+    8-byte pointers the archived `mobj_t`/thinker records are larger, so busy
+    maps overran the buffer (heap corruption → crash). Now a dedicated
+    `Z_Malloc` buffer sized to the actual level (headers + players + world +
+    one `mobj_t`-sized bound per live thinker), bounds-checked and freed.
+
+  Verified: save (`doomsav0.dsg`) and reload both work in-game. **Savegames are
+  64-bit-correct on this build.** *(148b89f)*
 - **`boolean` vs winsock.** Win32 `<rpcndr.h>` (pulled in by `<winsock2.h>`)
   typedefs `boolean` as `unsigned char`, colliding with DOOM's load-bearing
   `int` boolean. Rename Windows' `boolean` across the system-header includes.
