@@ -13,8 +13,15 @@
 #include <string.h>
 
 #ifdef _WIN32
+  // <rpcndr.h> (pulled in by winsock2.h) typedefs `boolean` as unsigned char,
+  // which collides with DOOM's `typedef int boolean` (doomtype.h).  DOOM's
+  // 4-byte boolean is load-bearing for on-disk WAD struct layouts, so it must
+  // stay int -- rename Windows' boolean for the duration of the system-header
+  // includes (DOOM's is established afterwards via i_udp.h).
+  #define boolean win_boolean
   #include <winsock2.h>
   #include <ws2tcpip.h>
+  #undef boolean
   typedef int socklen_t;
   #define CLOSESOCK closesocket
 #else
