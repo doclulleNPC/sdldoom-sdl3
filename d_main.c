@@ -843,6 +843,16 @@ void D_DoomMain (void)
 	exit (0);
     }
 
+    // MOD: -connectchoc <host[:port]> [version] -- SYN handshake test (stage 2).
+    p = M_CheckParm ("-connectchoc");
+    if (p && p < myargc-1)
+    {
+	const char* ver = (p < myargc-2 && myargv[p+2][0] != '-')
+			  ? myargv[p+2] : "Chocolate Doom 3.1.1";
+	I_ConnectChocServer (myargv[p+1], ver, 2 /*commercial*/, 1 /*doom2*/);
+	exit (0);
+    }
+
     IdentifyVersion ();
 	
     setbuf (stdout, NULL);

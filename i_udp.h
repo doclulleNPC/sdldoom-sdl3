@@ -77,4 +77,8 @@ net_packet_t*	UDP_Recv (int timeout_ms);
 // the -querychoc <host[:port]> command line option (handled in d_main.c).
 void		I_QueryChocServer (const char* hostport);
 
+// Stage 2: SYN connection handshake (reports accept/reject).  -connectchoc.
+void		I_ConnectChocServer (const char* hostport, const char* version,
+				     int gamemode, int gamemission);
+
 #endif

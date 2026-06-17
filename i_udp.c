@@ -217,6 +217,90 @@ net_packet_t* UDP_Recv (int timeout_ms)
     }
 }
 
+static void NET_WriteSHA1 (net_packet_t* p, const unsigned char* d)
+{
+    int i;
+    for (i = 0 ; i < 20 ; i++)
+	NET_WriteInt8 (p, d ? d[i] : 0);	// sha1_digest_t = 20 bytes
+}
+
+//
+// Stage-2 milestone: perform the Chocolate/Crispy SYN connection handshake and
+// report whether the server accepts us (into the lobby) or rejects us (with the
+// reason).  Invoked by -connectchoc <host[:port]>.  The version string MUST
+// match the target server's PACKAGE_STRING.
+//
+void I_ConnectChocServer (const char* hostport, const char* version, int gamemode, int gamemission)
+{
+    net_packet_t*	syn;
+    net_packet_t*	resp;
+    unsigned		type;
+    int			tries;
+
+    printf ("SYN handshake -> %s (as \"%s\", gamemode %d mission %d)...\n",
+	    hostport, version, gamemode, gamemission);
+
+    if (!UDP_OpenClient ())  { printf ("  socket error\n"); return; }
+    if (!UDP_Resolve (hostport, NET_DEFAULT_PORT))
+    { printf ("  could not resolve %s\n", hostport); UDP_Close (); return; }
+
+    syn = NET_NewPacket (64);
+    NET_WriteInt16 (syn, NET_PACKET_TYPE_SYN);
+    NET_WriteInt32 (syn, NET_MAGIC_NUMBER);
+    NET_WriteString (syn, version);		// PACKAGE_STRING
+    NET_WriteInt8 (syn, 1);			// num protocols
+    NET_WriteString (syn, "CHOCOLATE_DOOM_0");	// our supported protocol
+    // net_connect_data_t
+    NET_WriteInt8 (syn, gamemode);
+    NET_WriteInt8 (syn, gamemission);
+    NET_WriteInt8 (syn, 0);			// lowres_turn
+    NET_WriteInt8 (syn, 0);			// drone
+    NET_WriteInt8 (syn, 8);			// max_players
+    NET_WriteInt8 (syn, 0);			// is_freedoom
+    NET_WriteSHA1 (syn, NULL);			// wad_sha1sum (zeros for now)
+    NET_WriteSHA1 (syn, NULL);			// deh_sha1sum
+    NET_WriteInt8 (syn, 0);			// player_class
+    NET_WriteString (syn, "sdldoom");		// player name
+
+    // Send the SYN, then read several packets: a REJECTED means refused; a
+    // (reliable) SYN, a KEEPALIVE or WAITING_DATA all mean the server created
+    // our client connection, i.e. accepted us into the lobby.
+    UDP_Send (syn);
+    {
+	int	got_accept = 0, got_reject = 0, packets = 0;
+	for (tries = 0 ; tries < 12 && !got_reject ; tries++)
+	{
+	    resp = UDP_Recv (500);
+	    if (!resp) { UDP_Send (syn); continue; }	// retransmit & keep waiting
+	    packets++;
+	    NET_ReadInt16 (resp, &type);
+	    type &= 0x7fff;				// strip the reliable flag
+	    if (type == NET_PACKET_TYPE_REJECTED)
+	    {
+		char* reason = NET_ReadString (resp);
+		printf ("  REJECTED: %s\n", reason ? reason : "(no reason)");
+		got_reject = 1;
+	    }
+	    else if (type == NET_PACKET_TYPE_SYN
+		  || type == NET_PACKET_TYPE_KEEPALIVE
+		  || type == NET_PACKET_TYPE_WAITING_DATA)
+	    {
+		if (!got_accept)
+		    printf ("  ACCEPTED -- server created our connection"
+			    " (first marker: type %u); we're in the lobby.\n", type);
+		got_accept = 1;
+	    }
+	    NET_FreePacket (resp);
+	    if (got_accept && packets >= 2)
+		break;
+	}
+	if (!got_accept && !got_reject)
+	    printf ("  no usable response from server\n");
+    }
+    NET_FreePacket (syn);
+    UDP_Close ();
+}
+
 //
 // Stage-1 milestone: query a Chocolate/Crispy server and print its info.
 //
