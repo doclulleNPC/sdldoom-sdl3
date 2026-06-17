@@ -45,7 +45,11 @@ rcsid[] = "$Id: m_bbox.c,v 1.1 1997/02/03 22:45:10 b1 Exp $";
 
 
 
-int	mb_used = 6;
+// Zone heap size in MB.  Raised from the vanilla 6 MB: this port renders the
+// 3D view at a true higher internal resolution (up to 1920x1200), so the
+// screen-melt (f_wipe) buffers, intermission screens and renderer tables all
+// allocate far more from the zone than 320x200 did -- 6 MB overflowed.
+int	mb_used = 64;
 
 
 int I_strncasecmp(char *str1, char *str2, int len)
