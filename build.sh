@@ -8,7 +8,10 @@ set -e
 SDL3=${SDL3:-../SDL3}
 ARCH=${ARCH:-x64}
 
-gcc -O2 -o doom.exe *.c \
+# Compile the Windows resource (exe icon).  See sdldoom.rc / tools/gen_icon.py.
+windres sdldoom.rc -O coff -o sdldoom_res.o
+
+gcc -O2 -o sdldoom.exe *.c sdldoom_res.o \
     -I"$SDL3/include" \
     -DSDL_MAIN_HANDLED \
     "$SDL3/lib/$ARCH/SDL3.lib" \
@@ -18,5 +21,11 @@ gcc -O2 -o doom.exe *.c \
 # Put the runtime DLL next to the executable.
 cp -f "$SDL3/lib/$ARCH/SDL3.dll" .
 
-echo "Built doom.exe.  Run with e.g.:"
-echo "  DOOMWADDIR=/path/to/wad ./doom.exe -warp 1"
+# Drop fresh binaries into the run/ folder (where the IWADs/PWADs live).
+RUN=${RUN:-run}
+mkdir -p "$RUN"
+cp -f sdldoom.exe "$RUN/"
+cp -f "$SDL3/lib/$ARCH/SDL3.dll" "$RUN/"
+
+echo "Built sdldoom.exe (also copied to $RUN/).  Run with e.g.:"
+echo "  cd $RUN && ./sdldoom.exe -warp 1"

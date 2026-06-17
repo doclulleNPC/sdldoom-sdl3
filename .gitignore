@@ -1,4 +1,8 @@
+# Editor / agent local settings
+.claude/
+
 # Build output
+sdldoom.exe
 doom.exe
 doomdbg.exe
 /doom

@@ -626,7 +626,6 @@ void IdentifyVersion (void)
     char*	plutoniawad;
     char*	tntwad;
 
-    char *home;
     char *doomwaddir;
     doomwaddir = getenv("DOOMWADDIR");
     if (!doomwaddir)
@@ -641,10 +640,13 @@ void IdentifyVersion (void)
     tntwad      = D_WadPath(doomwaddir, "tnt.wad");
     doom2fwad   = D_WadPath(doomwaddir, "doom2f.wad");	// French
 
-    home = getenv("HOME");
-    if (!home)
-      home = ".";
-    sprintf(basedefault, "%s/.doomrc", home);
+    // Config lives next to the executable as sdldoom.cfg (overridable with
+    // -config <file>, handled in M_LoadDefaults).
+    {
+	const char* base = SDL_GetBasePath ();	// exe dir (may be NULL)
+	snprintf (basedefault, sizeof(basedefault), "%ssdldoom.cfg",
+		  base ? base : "");
+    }
 
     if (M_CheckParm ("-shdev"))
     {
