@@ -58,9 +58,20 @@ void		D_NetCl_SendTiccmd (ticcmd_t* cmd, int maketic);
 boolean		D_NetCl_Connected (void);
 boolean		D_NetCl_InGame (void);
 boolean		D_NetCl_LobbyLaunched (void);		// past the lobby?
+boolean		D_NetCl_IsDisconnected (void);
 const netcl_settings_t* D_NetCl_Settings (void);
 int		D_NetCl_MakeTic (void);
 int		D_NetCl_RecvTic (void);
+
+// Game-loop tic pull: TicReady(tic) is true once the merged tic is available;
+// GetTic copies the first `count` players' commands + in-game flags for it.
+boolean		D_NetCl_TicReady (int tic);
+void		D_NetCl_GetTic (int tic, ticcmd_t* cmds, boolean* ingame, int count);
+
+// Blocking join (connect -> lobby -> launch -> gamestart).  We are controller.
+boolean		D_NetCl_JoinGame (const char* hostport, const char* version,
+				  int gamemode, int gamemission, const char* playername,
+				  const netcl_settings_t* want, netcl_settings_t* got);
 
 // Disconnect cleanly (sends DISCONNECT and waits briefly for the ack).
 void		D_NetCl_Disconnect (void);

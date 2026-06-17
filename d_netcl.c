@@ -90,6 +90,10 @@ static recvslot_t	recvwindow[NET_BACKUPTICS];
 static ticcmd_t		recv_base[NET_PROTO_MAXPLAYERS];
 static unsigned		recvwindow_start;
 static unsigned		recvtic;
+// persistent ring of fully-merged tics, indexed by absolute tic % BACKUPTICS,
+// so the game loop can pull them after the recv window has drained past.
+static ticcmd_t		merged_cmds[NET_PROTO_MAXPLAYERS][NET_BACKUPTICS];
+static byte		merged_ingame[NET_BACKUPTICS];
 static int		need_to_acknowledge;
 static unsigned		gamedata_recv_time;
 
@@ -413,15 +417,19 @@ static void AdvanceWindow (void)
 {
     while (recvwindow[0].active)
     {
-	int i;
+	int i, slot = recvtic % NET_BACKUPTICS;
 	for (i = 0 ; i < NET_PROTO_MAXPLAYERS ; i++)
+	{
 	    if (recvwindow[0].ingame_bits & (1 << i))
 	    {
 		ticcmd_t out;
 		ApplyDiff (&recv_base[i], &recvwindow[0].d[i], &out);
 		recv_base[i] = out;		// running base for the diffs
 	    }
-	// Stage 4 will hand the merged tic to the simulation here.
+	    merged_cmds[i][slot] = recv_base[i];	// last-known cmd for all
+	}
+	merged_ingame[slot] = recvwindow[0].ingame_bits;
+	// The merged tic is now available via D_NetCl_GetTic() for the game loop.
 	recvtic++;
 	memmove (recvwindow, recvwindow + 1,
 		 sizeof(recvslot_t) * (NET_BACKUPTICS - 1));
@@ -469,6 +477,8 @@ static void EnterGame (void)
     memset (send_queue, 0, sizeof(send_queue));
     memset (recvwindow, 0, sizeof(recvwindow));
     memset (recv_base, 0, sizeof(recv_base));
+    memset (merged_cmds, 0, sizeof(merged_cmds));
+    memset (merged_ingame, 0, sizeof(merged_ingame));
     memset (&last_sent, 0, sizeof(last_sent));
     recvwindow_start = 0;
     maketic = 0;
@@ -576,9 +586,56 @@ void D_NetCl_StartGame (const netcl_settings_t* want)
 boolean D_NetCl_Connected (void)	{ return connected && !disconnected; }
 boolean D_NetCl_InGame (void)		{ return clientstate == CL_IN_GAME && !disconnected; }
 boolean D_NetCl_LobbyLaunched (void)	{ return clientstate != CL_WAITING_LAUNCH; }
+boolean D_NetCl_IsDisconnected (void)	{ return disconnected; }
 const netcl_settings_t* D_NetCl_Settings (void) { return &settings; }
 int D_NetCl_MakeTic (void)		{ return maketic; }
 int D_NetCl_RecvTic (void)		{ return recvtic; }
+
+// The game loop pulls completed tics from the merged ring.  TicReady tells it
+// how far it can run; GetTic copies the `count` players' commands for tic `tic`.
+boolean D_NetCl_TicReady (int tic)
+{
+    return tic >= 0 && tic < (int)recvtic && (int)recvtic - tic <= NET_BACKUPTICS;
+}
+
+void D_NetCl_GetTic (int tic, ticcmd_t* cmds, boolean* ingame, int count)
+{
+    int slot = ((tic % NET_BACKUPTICS) + NET_BACKUPTICS) % NET_BACKUPTICS;
+    int i;
+    for (i = 0 ; i < count && i < NET_PROTO_MAXPLAYERS ; i++)
+    {
+	cmds[i] = merged_cmds[i][slot];
+	ingame[i] = (merged_ingame[slot] & (1 << i)) != 0;
+    }
+}
+
+// Pump the network until `done` returns true, or until timeout.  Returns the
+// final value of done().
+static boolean PumpUntil (boolean (*done)(void), int timeout_ms)
+{
+    unsigned t0 = NET_GetTimeMS ();
+    while (!done () && !disconnected
+	   && (int)(NET_GetTimeMS () - t0) < timeout_ms)
+    { D_NetCl_Run (); usleep (2000); }
+    return done ();
+}
+
+// Full blocking join: connect -> lobby -> launch -> gamestart.  We act as the
+// controller (send LAUNCH, then GAMESTART with `want`).  On success the
+// server's authoritative settings are copied to *got and we are IN_GAME.
+boolean D_NetCl_JoinGame (const char* hostport, const char* version,
+			  int gamemode, int gamemission, const char* playername,
+			  const netcl_settings_t* want, netcl_settings_t* got)
+{
+    if (!D_NetCl_Connect (hostport, version, gamemode, gamemission, playername))
+	return false;
+    D_NetCl_LaunchGame ();
+    if (!PumpUntil (D_NetCl_LobbyLaunched, 5000)) return false;
+    D_NetCl_StartGame (want);
+    if (!PumpUntil (D_NetCl_InGame, 5000)) return false;
+    if (got) *got = settings;
+    return true;
+}
 
 //
 // Build the SYN connect packet (matches I_ConnectChocServer's format).
@@ -668,7 +725,7 @@ void I_NetClientTest (const char* hostport, const char* version,
 		      int gamemode, int gamemission)
 {
     netcl_settings_t	want;
-    unsigned		t0, gstart, lastreport;
+    unsigned		gstart, lastreport;
 
     printf ("Net client self-test -> %s (as \"%s\", gamemode %d mission %d)\n",
 	    hostport, version, gamemode, gamemission);
@@ -678,28 +735,14 @@ void I_NetClientTest (const char* hostport, const char* version,
     want.episode = 1; want.map = 1;  want.skill = 3;
     want.num_players = 1; want.consoleplayer = 0;
 
-    if (!D_NetCl_Connect (hostport, version, gamemode, gamemission, "sdldoom"))
-    { printf ("  connect failed (no response / rejected).\n"); UDP_Close (); return; }
-    printf ("  [1/4] connected -> in lobby.\n");
-
-    // We are the controller: ask the server to launch.
-    D_NetCl_LaunchGame ();
-    t0 = NET_GetTimeMS ();
-    while (!D_NetCl_LobbyLaunched () && !disconnected
-	   && (int)(NET_GetTimeMS () - t0) < 5000)
-    { D_NetCl_Run (); usleep (2000); }
-    if (!D_NetCl_LobbyLaunched ())
-    { printf ("  launch not acknowledged.\n"); D_NetCl_Disconnect (); return; }
-    printf ("  [2/4] launch acknowledged -> requesting game start.\n");
-
-    D_NetCl_StartGame (&want);
-    t0 = NET_GetTimeMS ();
-    while (!D_NetCl_InGame () && !disconnected
-	   && (int)(NET_GetTimeMS () - t0) < 5000)
-    { D_NetCl_Run (); usleep (2000); }
-    if (!D_NetCl_InGame ())
-    { printf ("  game did not start.\n"); D_NetCl_Disconnect (); return; }
-    printf ("  [3/4] IN GAME as player %d of %d (ticdup=%d extratics=%d new_sync=%d).\n",
+    if (!D_NetCl_JoinGame (hostport, version, gamemode, gamemission,
+			   "sdldoom", &want, NULL))
+    {
+	printf ("  join failed (no response / rejected / no game start).\n");
+	D_NetCl_Disconnect ();
+	return;
+    }
+    printf ("  [1-3/4] joined: IN GAME as player %d of %d (ticdup=%d extratics=%d new_sync=%d).\n",
 	    settings.consoleplayer, settings.num_players,
 	    settings.ticdup, settings.extratics, settings.new_sync);
 
