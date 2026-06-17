@@ -396,8 +396,10 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	dclicks = 0;
     }
 
-    // MOD: jump
-    if (mod_jump && gamekeydown[key_jump])
+    // MOD: jump.  Disabled in net games: BT_JUMP moves the player vertically
+    // but a vanilla/Chocolate peer ignores the bit, so our player's position
+    // would diverge from the peer's view of us -> consistency failure.
+    if (mod_jump && !netgame && gamekeydown[key_jump])
 	cmd->buttons |= BT_JUMP;
 
     // chainsaw overrides 
@@ -488,7 +490,10 @@ void G_BuildTiccmd (ticcmd_t* cmd)
  
     // MOD: with free-look, vertical mouse aims the view instead of moving
     // forward/back.  Otherwise it drives forward movement (vanilla).
-    if (mod_freelook)
+    // Disabled in net games: lookdir feeds projectile/hitscan aim (p_mobj,
+    // p_pspr, p_user) but is NOT carried in the ticcmd, so a peer would aim us
+    // differently and desync.  Leaving lookdir at 0 makes those paths vanilla.
+    if (mod_freelook && !netgame)
     {
 	player_t* plr = &players[consoleplayer];
 	plr->lookdir += mousey >> 3;
