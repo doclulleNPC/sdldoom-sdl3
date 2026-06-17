@@ -73,6 +73,7 @@ static int access(char *file, int mode)
 #include "m_menu.h"
 #include "c_console.h"
 #include "i_udp.h"	// MOD: Chocolate/Crispy-compatible netplay (stage 1: query)
+#include "d_netcl.h"	// MOD: net client state machine + GAMEDATA exchange (stage 3)
 
 #include "i_system.h"
 #include "i_sound.h"
@@ -850,6 +851,17 @@ void D_DoomMain (void)
 	const char* ver = (p < myargc-2 && myargv[p+2][0] != '-')
 			  ? myargv[p+2] : "Chocolate Doom 3.1.1";
 	I_ConnectChocServer (myargv[p+1], ver, 2 /*commercial*/, 1 /*doom2*/);
+	exit (0);
+    }
+
+    // MOD: -netclient <host[:port]> [version] -- full connect -> lobby -> launch
+    // -> gamestart -> idle GAMEDATA exchange self-test (stage 3; see d_netcl.c).
+    p = M_CheckParm ("-netclient");
+    if (p && p < myargc-1)
+    {
+	const char* ver = (p < myargc-2 && myargv[p+2][0] != '-')
+			  ? myargv[p+2] : "Chocolate Doom 3.1.1";
+	I_NetClientTest (myargv[p+1], ver, 2 /*commercial*/, 1 /*doom2*/);
 	exit (0);
     }
 

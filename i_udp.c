@@ -31,6 +31,7 @@
   #include <netdb.h>
   #include <unistd.h>
   #include <sys/select.h>
+  #include <sys/time.h>
   #define CLOSESOCK close
   #define INVALID_SOCKET (-1)
 #endif
@@ -118,6 +119,33 @@ boolean NET_ReadInt32 (net_packet_t* p, unsigned int* i)
        | (p->data[p->pos+2] << 8) | p->data[p->pos+3];
     p->pos += 4;
     return true;
+}
+
+boolean NET_ReadSInt8 (net_packet_t* p, int* i)
+{
+    unsigned int u;
+    if (!NET_ReadInt8 (p, &u)) return false;
+    *i = (u & 0x80) ? (int)u - 256 : (int)u;
+    return true;
+}
+
+boolean NET_ReadSInt16 (net_packet_t* p, int* i)
+{
+    unsigned int u;
+    if (!NET_ReadInt16 (p, &u)) return false;
+    *i = (u & 0x8000) ? (int)u - 65536 : (int)u;
+    return true;
+}
+
+unsigned NET_GetTimeMS (void)
+{
+#ifdef _WIN32
+    return (unsigned) GetTickCount ();
+#else
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return (unsigned)(tv.tv_sec * 1000u + tv.tv_usec / 1000u);
+#endif
 }
 
 char* NET_ReadString (net_packet_t* p)

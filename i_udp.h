@@ -60,7 +60,12 @@ void		NET_WriteString (net_packet_t* p, const char* s);
 boolean		NET_ReadInt8 (net_packet_t* p, unsigned int* i);
 boolean		NET_ReadInt16 (net_packet_t* p, unsigned int* i);
 boolean		NET_ReadInt32 (net_packet_t* p, unsigned int* i);
+boolean		NET_ReadSInt8 (net_packet_t* p, int* i);	// sign-extended
+boolean		NET_ReadSInt16 (net_packet_t* p, int* i);
 char*		NET_ReadString (net_packet_t* p);	// into a static buffer
+
+// Wall-clock milliseconds (monotonic-ish), for keepalive/resend/tic pacing.
+unsigned	NET_GetTimeMS (void);
 
 // --- UDP transport --------------------------------------------------------
 // Open a UDP socket (bound to any port for a client).  Returns false on error.
