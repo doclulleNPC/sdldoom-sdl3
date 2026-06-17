@@ -392,7 +392,7 @@ void D_DoomLoop (void)
     while (1)
     {
 	// frame syncronous IO operations
-	I_StartFrame ();                
+	I_StartFrame ();
 	
 	// process one or more tics
 	if (singletics)
@@ -844,8 +844,10 @@ void D_DoomMain (void)
 	exit (0);
     }
 
-    // MOD: -connectchoc <host[:port]> [version] -- SYN handshake test (stage 2).
-    p = M_CheckParm ("-connectchoc");
+    // MOD: -chocsyn <host[:port]> [version] -- SYN handshake test (stage 2).
+    // (Named so it doesn't prefix-collide with -connect; M_CheckParm matches
+    //  prefixes, and "-connect" is a prefix of the old "-connectchoc".)
+    p = M_CheckParm ("-chocsyn");
     if (p && p < myargc-1)
     {
 	const char* ver = (p < myargc-2 && myargv[p+2][0] != '-')
@@ -1170,6 +1172,20 @@ printf("added\n");
 
     printf ("I_Init: Setting up machine state.\n");
     I_Init ();
+
+    // MOD: -connect <host[:port]> [version] -- join a Chocolate/Crispy server
+    // as a client (stage 4).  Parsed here so D_CheckNetGame takes the choc path.
+    p = M_CheckParm ("-connect");
+    if (p && p < myargc-1)
+    {
+	extern boolean	choc_client;
+	extern char	choc_host[];
+	extern char	choc_version[];
+	choc_client = true;
+	strncpy (choc_host, myargv[p+1], 255);  choc_host[255] = 0;
+	if (p < myargc-2 && myargv[p+2][0] != '-')
+	{ strncpy (choc_version, myargv[p+2], 127);  choc_version[127] = 0; }
+    }
 
     printf ("D_CheckNetGame: Checking network game status.\n");
     D_CheckNetGame ();
