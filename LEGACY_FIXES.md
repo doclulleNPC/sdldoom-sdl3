@@ -84,6 +84,15 @@ Two failure modes recur: **byte-width fields that assumed values < 256**, and
   floating; use `/BASE_WIDTH`. And `d_main.c` detected fullscreen view with a
   hardcoded `viewheight == 200`; at hi-res it's `SCREENHEIGHT` → compare against
   `SCREENHEIGHT`. *(aaf0b6c)*
+- **More hardcoded base-res in `D_Display`.** The border-update test used
+  `scaledviewwidth != 320`, but `scaledviewwidth` is in *screen* units
+  (`r_main.c` sets it to `SCREENWIDTH` or `setblocks*32*hires`; the renderer's
+  own border code keys off `== SCREENWIDTH`). At hi-res it was true even at full
+  width → the border block ran every frame. Compare against `SCREENWIDTH`. Also:
+  nothing forced a full status-bar repaint when the menu closed, so 2× text menu
+  items (e.g. "VIDEO") that bleed below base `y=168` into the bar stayed baked
+  into the HUD over HEALTH/ARMS — force `redrawsbar` when the menu was active
+  (`menuactivestate`). *(16b7214)*
 - **Zone heap too small for hi-res buffers.** `f_wipe`'s screen-melt does
   `Z_Malloc(SCREENWIDTH*SCREENHEIGHT)` (~1 MB at hires 4), and the intermission
   + renderer tables also scale with resolution. The vanilla 6 MB zone could
