@@ -107,7 +107,7 @@ hardwired to `doom` in this engine, so a protocol-valid mission is derived
   Footsteps (private `FS_Rand`, audio only) and all render-only MOD features
   (crosshair, HD textures/sprites, smoothing/AA) are sim-safe and stay on. When
   adding any MOD feature that touches `p_*`/`m_random`, gate it on `!netgame`.
-- Savegames remain not 64-bit-correct (see below); avoid load/save in netplay.
+- Mid-game save/load in netplay isn't wired through the choc tic stream — avoid it in net games (single-player save/load is 64-bit-correct, see below).
 
 ### 64-bit porting notes (important when touching old DOOM code)
 
@@ -116,7 +116,7 @@ Vanilla DOOM assumes 32-bit (ILP32) and stores pointers in `int`/aligns via `(in
 - On-disk WAD structs must keep their 32-bit field widths. `maptexture_t.columndirectory` was `void**` (8 bytes) and shifted every following field — it must be a 4-byte `int`. The historic `boolean` (int, 4 bytes) is also load-bearing for these layouts, which is why `doomtype.h` keeps `typedef int boolean` rather than 1-byte `bool`.
 - Pointer↔int alignment math (`(int)p + 255 & ~255`) truncates — use `uintptr_t`.
 - `lumpinfo_t.handle` holds a `FILE*`, not an `int`.
-- `p_saveg.c` still archives pointers as 32-bit ints, so **savegames are not 64-bit-correct** (load/save will misbehave); normal play is unaffected. Left as a known limitation.
+- `p_saveg.c` **is now 64-bit-correct** (was the historic known limitation): index↔pointer swizzles use `intptr_t`/`uintptr_t` instead of `(int)`, and `G_DoSaveGame` uses a level-sized `Z_Malloc` buffer instead of the fixed `0x2c000` cap that 8-byte-pointer structs overran. Save + reload verified. See `LEGACY_FIXES.md` §A.
 
 ## Running
 
