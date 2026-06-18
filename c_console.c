@@ -24,12 +24,11 @@
 
 #include "c_console.h"
 
-// from m_menu.c -- draws hu_font text in BASE (320x200) coords, hires-aware.
-extern void	M_WriteText (int x, int y, char* string);
 // from r_data.c -- 34 light/dark levels of the palette (index*256 + colour).
 extern byte*	colormaps;
 
-#define CON_TOGGLE	'`'		// backquote / tilde
+#define CON_TOGGLE	'`'		// physical grave/tilde key (see i_video.c:
+					//  matched by scancode, layout-independent)
 #define CON_HEIGHT	120		// console height in BASE (200-tall) rows
 #define CON_DARK	23		// colormap level used to dim the backdrop
 #define CON_LINES	256		// scrollback ring size
@@ -261,8 +260,7 @@ void C_Drawer (void)
 {
     int		target;
     int		hpix;
-    int		x, y, i;
-    char	buf[CON_INPUTLEN+4];
+    int		x, y;
 
     // slide toward the open/closed position
     target = consoleactive ? CON_HEIGHT : 0;
@@ -271,10 +269,13 @@ void C_Drawer (void)
     else if (conanim > target)
 	conanim = (conanim-CON_STEP < target) ? target : conanim-CON_STEP;
 
+    conblink++;				// cursor blink (read by C_InputLine)
+
     if (conanim <= 0)
 	return;
 
     // Dim the area the console covers (translucent backdrop via the colormaps).
+    // The text is drawn on top by I_DrawConsole (i_video.c) with SDL's font.
     hpix = conanim * hires;
     for (y = 0; y < hpix; y++)
     {
@@ -288,19 +289,34 @@ void C_Drawer (void)
 	for (x = 0; x < SCREENWIDTH; x++)
 	    row[x] = colormaps[31*256 + row[x]];
     }
+}
 
-    // input line at the bottom of the console (base coords)
-    conblink++;
+
+//
+// Accessors used by the SDL3-font overlay (I_DrawConsole in i_video.c).
+//
+int C_BaseHeight (void)
+{
+    return conanim;			// drop height in 320x200 rows, 0 = closed
+}
+
+const char* C_InputLine (void)
+{
+    static char	buf[CON_INPUTLEN+4];
     snprintf (buf, sizeof(buf), "]%s%s", coninput, (conblink & 8) ? "_" : "");
-    y = conanim - 10;
-    M_WriteText (4, y, buf);
+    return buf;
+}
 
-    // scrollback above it, newest first
-    y -= 10;
-    for (i = 0; i < concount && y > -8; i++)
-    {
-	int idx = (conhead-1-i+CON_LINES) % CON_LINES;
-	M_WriteText (4, y, conlines[idx]);
-	y -= 8;
-    }
+int C_ScrollCount (void)
+{
+    return concount;
+}
+
+const char* C_ScrollLine (int i)	// i = 0 newest
+{
+    int idx;
+    if (i < 0 || i >= concount)
+	return NULL;
+    idx = (conhead-1-i+CON_LINES) % CON_LINES;
+    return conlines[idx];
 }
