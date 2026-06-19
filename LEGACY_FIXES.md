@@ -134,6 +134,12 @@ sizes.
   which is absent from non-French IWADs → `W_GetNumForName: WIOBJ not found`
   crash. The real test is `language == french` (and `language` is only ever set
   to `french` for the actual `doom2f.wad`). Fixed all three `if (french)` sites.
+- **Strict-aliasing miscompile at `-O2`.** The engine type-puns constantly
+  (e.g. `*(int*)lumpinfo[l].name` to compare four chars as one int). Modern gcc
+  `-O2` assumes strict aliasing and may reorder/elide these — the classic symptom
+  is `R_InitSprites: Sprite TROO frame A is missing rotations` at startup. The fix
+  is a build flag, not source: **`-fno-strict-aliasing` is mandatory** (plus
+  `-fcommon` for the era's tentative-definition globals). See `build.sh`.
 
 ---
 

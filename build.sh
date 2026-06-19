@@ -11,7 +11,11 @@ ARCH=${ARCH:-x64}
 # Compile the Windows resource (exe icon).  See sdldoom.rc / tools/gen_icon.py.
 windres sdldoom.rc -O coff -o sdldoom_res.o
 
-gcc -O2 -o sdldoom.exe *.c sdldoom_res.o \
+# -fno-strict-aliasing is MANDATORY: the engine type-puns constantly (e.g.
+# *(int*)lumpinfo[l].name to compare 4 chars), which gcc -O2 miscompiles under
+# default strict aliasing (classic symptom: "Sprite TROO frame A is missing
+# rotations" at startup).  -fcommon for the era's tentative-definition globals.
+gcc -O2 -fno-strict-aliasing -fcommon -o sdldoom.exe *.c sdldoom_res.o \
     -I"$SDL3/include" \
     -DSDL_MAIN_HANDLED \
     "$SDL3/lib/$ARCH/SDL3.lib" \
