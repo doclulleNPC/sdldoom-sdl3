@@ -476,6 +476,12 @@ static void TryRunTics_Choc (void)
 	    for (p = 0 ; p < MAXPLAYERS ; p++)
 		netcmds[p][g%BACKUPTICS] = cmds[p];
 
+	    // The server's echo of our OWN command round-trips through the network
+	    // and can arrive empty/late -- the local player froze ("can't move").
+	    // Apply our locally-built command for ourselves directly (as vanilla's
+	    // instant loopback does); the server still relays it to other players.
+	    netcmds[consoleplayer][g%BACKUPTICS] = localcmds[g%BACKUPTICS];
+
 	    if (advancedemo)
 		D_DoAdvanceDemo ();
 	    M_Ticker ();
