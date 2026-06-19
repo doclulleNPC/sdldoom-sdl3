@@ -126,6 +126,14 @@ sizes.
   *(a4ff6b9)*
 - **Missing-data crash.** Footstep playback faulted when the sound lumps weren't
   present; guard and disable quietly. *(fb9a2d6)*
+- **Enum constant used as a boolean.** `wi_stuff.c`/`hu_stuff.c` test `if
+  (french)` — but `french` is a *value* of the `Language_t` enum (= 1), not a
+  flag, so the test is *always true*. In single-player the intermission takes the
+  harmless `else` (loads `WIOSTI`), so it never showed; but in co-op (`netgame &&
+  !deathmatch`) the always-true branch loads `WIOBJ` (the French "items" lump),
+  which is absent from non-French IWADs → `W_GetNumForName: WIOBJ not found`
+  crash. The real test is `language == french` (and `language` is only ever set
+  to `french` for the actual `doom2f.wad`). Fixed all three `if (french)` sites.
 
 ---
 
