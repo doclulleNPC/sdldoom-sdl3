@@ -70,6 +70,8 @@ double		fc_lightdim[32];	// per-light-level brightness (exported for HD sprite s
 static int		cm_dim_ready;
 static int		cm_built;	// colormap32 has been built at least once
 
+int			ignore_mouse_time = 0;
+
 extern byte*		colormaps;	// r_data.c (8-bit light tables)
 extern int		viewwindowx, viewwindowy, scaledviewwidth, viewheight;
 
@@ -296,8 +298,15 @@ void I_GetEvent(SDL_Event *Event)
       case SDL_EVENT_MOUSE_MOTION:
 	event.type = ev_mouse;
 	event.data1 = I_MouseButtons(Event->motion.state);
+#ifdef _WIN32
+	// raw input on Windows reports device coordinates without desktop acceleration,
+	// scale it up to feel comfortable compared to Linux
+	event.data2 =  ((int)Event->motion.xrel) << 3;
+	event.data3 = -((int)Event->motion.yrel) << 3;
+#else
 	event.data2 =  ((int)Event->motion.xrel) << 2;
 	event.data3 = -((int)Event->motion.yrel) << 2;
+#endif
 	D_PostEvent(&event);
 	break;
 
@@ -501,15 +510,14 @@ int	screen_aspect = 0;
 // (no true MSAA -- there is no geometry/truecolour stage to sample).
 int	mod_smooth = 0;
 
-static const struct { int num, den; } aspects[4] =
-{
-    { 4, 3 }, { 16, 10 }, { 16, 9 }, { 0, 0 }	// {0,0} = free
-};
-
 // Non-zero when displaying fullscreen (don't resize the window then).
 // Saved/restored via the config file (see m_misc.c defaults).
 int	fullscreen_mode = 0;
 
+int I_OutHeight(void)
+{
+    return (aspect == 0) ? SCREENWIDTH*3/4 : SCREENHEIGHT;
+}
 
 //
 // (Re)create the streaming texture + logical presentation to match the
@@ -520,10 +528,11 @@ static void I_CreateTexture(void)
     if (texture)
 	SDL_DestroyTexture(texture);
 
-    // The frame is presented stretched to fill the window; the window shape
-    // (set by I_ApplyAspect) therefore determines the displayed aspect ratio.
-    SDL_SetRenderLogicalPresentation(renderer, SCREENWIDTH, SCREENHEIGHT,
-				     SDL_LOGICAL_PRESENTATION_STRETCH);
+    // Render at the internal resolution; SDL scales (aspect-preserving) to the
+    // window.  Letterbox keeps the chosen aspect with bars rather than distorting.
+    // For 4:3 the logical height is wider-aspect so the 16:10 buffer is shown 4:3.
+    SDL_SetRenderLogicalPresentation(renderer, SCREENWIDTH, I_OutHeight(),
+				     SDL_LOGICAL_PRESENTATION_LETTERBOX);
 
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
 				SDL_TEXTUREACCESS_STREAMING,
@@ -544,42 +553,6 @@ void I_SetSmoothing(int on)
 }
 
 //
-// Size the window to match the internal resolution and the chosen aspect
-// ratio, clamped to fit the display.  Called whenever the resolution or the
-// aspect ratio changes, so picking a higher resolution makes a bigger window.
-//
-void I_ApplyAspect(void)
-{
-    int		w, h;
-    SDL_Rect	bounds;
-    SDL_DisplayID disp;
-
-    if (!window || fullscreen_mode)
-	return;
-
-    // Window is the internal-resolution width, with the height giving the
-    // requested aspect ratio (free mode keeps the native 16:10 frame shape).
-    w = SCREENWIDTH;
-    if (aspects[screen_aspect].num)
-	h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
-    else
-	h = SCREENHEIGHT;
-
-    // Don't let the window grow past the usable desktop area.
-    disp = SDL_GetDisplayForWindow(window);
-    if (disp && SDL_GetDisplayUsableBounds(disp, &bounds))
-    {
-	int maxw = bounds.w - 40;
-	int maxh = bounds.h - 80;
-	if (w > maxw) { h = h * maxw / w; w = maxw; }
-	if (h > maxh) { w = w * maxh / h; h = maxh; }
-    }
-
-    SDL_SetWindowSize(window, w, h);
-    SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-}
-
-//
 // Toggle borderless-desktop fullscreen at runtime (from the Video menu).
 //
 void I_SetFullscreen(int on)
@@ -589,9 +562,15 @@ void I_SetFullscreen(int on)
 
     fullscreen_mode = on ? 1 : 0;
     SDL_SetWindowFullscreen(window, fullscreen_mode ? true : false);
+    SDL_SyncWindow(window);
 
     if (!fullscreen_mode)
-	I_ApplyAspect();		// restore the windowed size
+    {
+	SDL_SetWindowSize(window, SCREENWIDTH, I_OutHeight());
+	SDL_SyncWindow(window);
+	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    }
+    ignore_mouse_time = I_GetTime() + 10;
 }
 
 int I_GetFullscreen(void)
@@ -607,19 +586,33 @@ void		ST_SetRes (void);
 
 //
 // V_SetRes
-// Change the internal rendering resolution at runtime (scale = 1..4).
+// Change the internal rendering resolution at runtime (scale = 1..7).
 // Rebuilds the renderer tables, status bar buffer and SDL texture.
 //
 void V_SetRes(int scale)
 {
     if (scale < 1) scale = 1;
-    if (scale > 6) scale = 6;
+    if (scale > 7) scale = 7;
     if (BASE_WIDTH*scale > MAXWIDTH || BASE_HEIGHT*scale > MAXHEIGHT)
 	return;
 
+    widescreen   = (aspect == 1);		// only 16:9 widens the buffer (Hor+)
     hires        = scale;
-    SCREENWIDTH  = BASE_WIDTH  * scale;
     SCREENHEIGHT = BASE_HEIGHT * scale;
+    NONWIDEWIDTH = BASE_WIDTH  * scale;		// the 16:10 reference width
+
+    if (widescreen)
+    {
+	SCREENWIDTH = SCREENHEIGHT * 16 / 9;	// Hor+ 16:9 buffer
+	if (SCREENWIDTH > MAXWIDTH) SCREENWIDTH = MAXWIDTH;
+	SCREENWIDTH &= ~3;			// keep a multiple of 4
+    }
+    else
+	SCREENWIDTH = NONWIDEWIDTH;		// 4:3 and 16:10 share the 320*hires buffer
+						// (4:3 is the same buffer shown stretched)
+
+    // half the extra width, in BASE (320) coords -- HUD edges shift by this
+    WIDESCREENDELTA = ((SCREENWIDTH - NONWIDEWIDTH) / scale) / 2;
 
     if (renderer)
 	I_CreateTexture();
@@ -630,8 +623,13 @@ void V_SetRes(int scale)
     ST_SetRes();				// status bar background buffer + refresh
     R_SetViewSize (screenblocks, detailLevel);
 
-    // Grow/shrink the window to match the new resolution.
-    I_ApplyAspect();
+    // Grow/shrink the window to match the new resolution + output aspect (windowed).
+    if (window && !fullscreen_mode)
+    {
+	SDL_SetWindowSize(window, SCREENWIDTH, I_OutHeight());
+	SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    }
+    ignore_mouse_time = I_GetTime() + 10;
 }
 
 
@@ -657,13 +655,13 @@ void I_InitGraphics(void)
     // -nograbmouse opts out.
     grabMouse = !M_CheckParm("-nograbmouse");
 
-    // screen_aspect / hires / fullscreen_mode come from the config file
+    // aspect / hires / fullscreen_mode come from the config file
     // (loaded by M_LoadDefaults before this runs).  Optional -aspect overrides.
-    screen_aspect &= 3;
+    aspect &= 3;
     {
 	int p = M_CheckParm("-aspect");
 	if (p && p < myargc-1)
-	    screen_aspect = atoi(myargv[p+1]) & 3;
+	    aspect = atoi(myargv[p+1]) & 3;
     }
 
     // Initial resolution scale (also drives the window size).  Defaults to the
@@ -679,14 +677,12 @@ void I_InitGraphics(void)
 	    startscale = atoi(myargv[p+1]);
     }
     if (startscale < 1) startscale = 1;
-    if (startscale > 6) startscale = 6;
+    if (startscale > 7) startscale = 7;
 
-    // Initial window size = resolution width, height for the chosen aspect.
+    // Initial window size = 16:10 reference size for the startscale.
+    // It will be resized to correct widescreen size in V_SetRes.
     w = BASE_WIDTH * startscale;
-    if (aspects[screen_aspect].num)
-	h = w * aspects[screen_aspect].den / aspects[screen_aspect].num;
-    else
-	h = BASE_HEIGHT * startscale;
+    h = BASE_HEIGHT * startscale;
 
     window_flags |= SDL_WINDOW_RESIZABLE;
     if (fullscreen_mode || M_CheckParm("-fullscreen"))

@@ -303,6 +303,9 @@ S_StartSoundAtVolume
   //  and if not, modify the params
   if (origin && origin != players[consoleplayer].mo)
   {
+    if (players[consoleplayer].mo == NULL)
+      return;
+
     rc = S_AdjustSoundParams(players[consoleplayer].mo,
 			     origin,
 			     &volume,
@@ -583,6 +586,11 @@ void S_UpdateSounds(void* listener_p)
 		//  or modify their params
 		if (c->origin && listener_p != c->origin)
 		{
+		    if (listener == NULL)
+		    {
+			S_StopChannel(cnum);
+			continue;
+		    }
 		    audible = S_AdjustSoundParams(listener,
 						  c->origin,
 						  &volume,
@@ -761,6 +769,9 @@ S_AdjustSoundParams
     fixed_t	adx;
     fixed_t	ady;
     angle_t	angle;
+
+    if (listener == NULL || source == NULL)
+	return 0;
 
     // calculate the distance to sound origin
     //  and clip it if necessary

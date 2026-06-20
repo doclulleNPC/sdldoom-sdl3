@@ -207,7 +207,7 @@ extern int	showMessages;
 extern	int	numChannels;
 
 // video settings (i_video.c; hires is in doomdef.h)
-extern	int	screen_aspect;
+extern	int	aspect;
 extern	int	fullscreen_mode;
 
 // MOD feature toggles (g_game.c / i_video.c / doomstat.h)
@@ -280,7 +280,7 @@ default_t	defaults[] =
 
     // Video settings (persist resolution / aspect / fullscreen across runs).
     {"screen_resolution",&hires, 2},
-    {"screen_aspect",&screen_aspect, 0},
+    {"screen_aspect",&aspect, 2},
     {"fullscreen",&fullscreen_mode, 0},
 
     // MOD feature toggles (Options -> Mod).

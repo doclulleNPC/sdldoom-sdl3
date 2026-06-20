@@ -13,12 +13,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef _WIN32
-  #include <windows.h>
-  #define usleep(us) Sleep ((us) / 1000)
-#else
-  #include <unistd.h>
-#endif
+#include <SDL3/SDL.h>
+#define usleep(us) SDL_Delay((us) / 1000)
 
 #include "doomtype.h"
 #include "d_ticcmd.h"

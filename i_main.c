@@ -25,8 +25,11 @@ static const char
 rcsid[] = "$Id: i_main.c,v 1.4 1997/02/03 22:45:10 b1 Exp $";
 
 
+#ifndef SDL_MAIN_HANDLED
 #define SDL_MAIN_HANDLED	/* we provide our own main(); no SDL main shim */
+#endif
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 
 #include "doomdef.h"
 

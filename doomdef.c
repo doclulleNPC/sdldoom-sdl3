@@ -39,4 +39,14 @@ int	SCREENWIDTH  = BASE_WIDTH;
 int	SCREENHEIGHT = BASE_HEIGHT;
 int	hires        = 1;
 
+// Widescreen (Hor+) support, crispy-doom style.  When `widescreen` is on,
+// SCREENWIDTH is made wider than the 4:3/16:10 reference NONWIDEWIDTH; the 3D
+// projection uses the NONWIDE width so the extra columns show more world at the
+// sides (vertical FOV unchanged).  WIDESCREENDELTA is half the extra width in
+// BASE (320-wide) coords -- HUD edge elements shift out by it.
+int	aspect        = 2;		// config: 0=4:3, 1=16:9, 2=16:10 (native base)
+int	widescreen    = 0;		// derived in V_SetRes: 1 when aspect==16:9 (Hor+)
+int	NONWIDEWIDTH  = BASE_WIDTH;	// the 16:10 width for the current hires
+int	WIDESCREENDELTA = 0;		// (SCREENWIDTH-NONWIDEWIDTH)/hires/2, BASE coords
+
 

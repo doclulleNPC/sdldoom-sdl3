@@ -500,8 +500,6 @@ void G_BuildTiccmd (ticcmd_t* cmd)
 	if (plr->lookdir > LOOKDIRMAX)  plr->lookdir = LOOKDIRMAX;
 	if (plr->lookdir < -LOOKDIRMAX) plr->lookdir = -LOOKDIRMAX;
     }
-    else
-	forward += mousey;
 
     if (strafe)
 	side += mousex*2;
@@ -691,8 +689,8 @@ boolean G_Responder (event_t* ev)
 	mousebuttons[0] = ev->data1 & 1; 
 	mousebuttons[1] = ev->data1 & 2; 
 	mousebuttons[2] = ev->data1 & 4; 
-	mousex = ev->data2*(mouseSensitivity+5)/10; 
-	mousey = ev->data3*(mouseSensitivity+5)/10; 
+	mousex = ev->data2 * (mouseSensitivity + 1); 
+	mousey = ev->data3 * (mouseSensitivity + 1); 
 	return true;    // eat events 
  
       case ev_joystick: 
@@ -1709,17 +1707,22 @@ void G_DeferedPlayDemo (char* name)
     gameaction = ga_playdemo; 
 } 
  
+extern boolean advancedemo;
+
 void G_DoPlayDemo (void) 
 { 
     skill_t skill; 
     int             i, episode, map; 
+    int             demo_version;
 	 
     gameaction = ga_nothing; 
     demobuffer = demo_p = W_CacheLumpName (defdemoname, PU_STATIC); 
-    if ( *demo_p++ != VERSION_NUM)
+    demo_version = *demo_p++;
+    if (demo_version != VERSION_NUM && demo_version != 109)
     {
-      fprintf( stderr, "Demo is from a different game version!\n");
+      fprintf( stderr, "Demo is from a different game version! (got %i, expected %i or 109)\n", demo_version, VERSION_NUM);
       gameaction = ga_nothing;
+      advancedemo = true;
       return;
     }
     

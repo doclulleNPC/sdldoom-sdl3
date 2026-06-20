@@ -960,29 +960,24 @@ void M_Sound(int choice)
 //
 // Video menu: internal resolution + display aspect ratio.
 //
-extern int	screen_aspect;		// i_video.c
+extern int	aspect;		// doomdef.c
 void		V_SetRes (int scale);	// i_video.c
-void		I_ApplyAspect (void);	// i_video.c
 void		I_SetFullscreen (int on);// i_video.c
 int		I_GetFullscreen (void);	// i_video.c
 
-static char* M_ResNames[6]    = { "320x200", "640x400", "960x600",
-				  "1280x800", "1600x1000", "1920x1200" };
-static char* M_AspectNames[4] = { "4:3", "16:10", "16:9", "Stretch" };
+static char* M_AspectNames[3] = { "4:3", "16:9", "16:10" };
 
 void M_DrawVideo(void)
 {
-    int ri = hires-1;
-    if (ri < 0) ri = 0;
-    if (ri > 5) ri = 5;
+    char res[24];
 
+    sprintf (res, "%dx%d", SCREENWIDTH, SCREENHEIGHT);	// actual render size
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_res, "Resolution");
-    M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_res,
-		M_ResNames[ri]);
+    M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_res, res);
 
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_aspect, "Aspect");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_aspect,
-		M_AspectNames[screen_aspect&3]);
+		M_AspectNames[(aspect>=0 && aspect<=2) ? aspect : 2]);
 
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_fullscreen, "Fullscreen");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_fullscreen,
@@ -994,7 +989,7 @@ void M_VideoRes(int choice)
     // choice 0 = left (smaller), 1 = right/enter (larger)
     if (choice)
     {
-	if (hires < 6) V_SetRes(hires+1);
+	if (hires < 7) V_SetRes(hires+1);
     }
     else
     {
@@ -1005,11 +1000,8 @@ void M_VideoRes(int choice)
 
 void M_VideoAspect(int choice)
 {
-    if (choice)
-	screen_aspect = (screen_aspect+1) & 3;
-    else
-	screen_aspect = (screen_aspect+3) & 3;
-    I_ApplyAspect();
+    aspect = choice ? (aspect+1)%3 : (aspect+2)%3;
+    V_SetRes(hires);
     M_SaveDefaults();		// persist now, not just at quit
 }
 
@@ -1862,6 +1854,10 @@ boolean M_Responder (event_t* ev)
     }
     else
     {
+	extern int ignore_mouse_time;
+	if (ev->type == ev_mouse && I_GetTime() < ignore_mouse_time)
+	    return true;
+
 	if (ev->type == ev_mouse && mousewait < I_GetTime())
 	{
 	    mousey += ev->data3;
