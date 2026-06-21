@@ -21,8 +21,8 @@ changes simulation results breaks demo/netgame sync. So bugs split into:
 
 | Bug | Status | Where | Symptom |
 |---|---|---|---|
-| **Intercepts overflow** | ⬜ present | `p_maputl.c` `intercepts[MAXINTERCEPTS]` (128), `intercept_p++` with **no bound** (`:606`,`:671`) | `P_PathTraverse` (hitscan/LOS/use across complex geometry) runs `intercept_p` past the array → overwrites adjacent globals → wrong shots / crash. The classic "intercepts overflow". |
-| **Spechit overflow** ("Donut overrun") | ⬜ present | `p_map.c` `spechit[MAXSPECIALCROSS]` (8), `spechit[numspechit++]` with **no bound** (`:242`) | Crossing >8 special lines in one move overruns `spechit[]` into neighbouring memory — the famous corruption used by some speedruns; crash on others. |
+| **Intercepts overflow** | ✅ fixed | `p_maputl.c` — `intercepts` now a grown pointer (`P_CheckIntercepts`) | vanilla ran `intercept_p` past the fixed `[128]` on shots/LOS across complex geometry → smashed adjacent globals. Now realloc-grown; behaviour-identical when it didn't overflow. |
+| **Spechit overflow** ("Donut overrun") | ✅ fixed | `p_map.c` — `spechit` now a grown pointer | vanilla overran the fixed `[8]` when >8 special lines were crossed in one move. Now realloc-grown; all crossed special lines trigger, no corruption. |
 | **Activeplats overflow** | ⬜ present | `p_plats.c` `activeplats[MAXPLATS]` (30); `P_AddActivePlat` → `I_Error("no more plats!")` | >30 simultaneously-moving floors/lifts → hard `I_Error` abort. |
 | **Button overflow** | ⬜ present | `p_switch.c` `buttonlist[MAXBUTTONS]` (16) | >16 switch animations queued → the new switch silently never reverts (stuck texture). |
 | Visplane / drawseg / vissprite / solidseg caps | ✅ fixed | `r_plane.c`/`r_bsp.c`/`r_things.c` | dynamic/grown (`5c5fd1d`) — render-only, no demo impact. |
