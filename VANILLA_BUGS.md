@@ -23,8 +23,8 @@ changes simulation results breaks demo/netgame sync. So bugs split into:
 |---|---|---|---|
 | **Intercepts overflow** | ✅ fixed | `p_maputl.c` — `intercepts` now a grown pointer (`P_CheckIntercepts`) | vanilla ran `intercept_p` past the fixed `[128]` on shots/LOS across complex geometry → smashed adjacent globals. Now realloc-grown; behaviour-identical when it didn't overflow. |
 | **Spechit overflow** ("Donut overrun") | ✅ fixed | `p_map.c` — `spechit` now a grown pointer | vanilla overran the fixed `[8]` when >8 special lines were crossed in one move. Now realloc-grown; all crossed special lines trigger, no corruption. |
-| **Activeplats overflow** | ⬜ present | `p_plats.c` `activeplats[MAXPLATS]` (30); `P_AddActivePlat` → `I_Error("no more plats!")` | >30 simultaneously-moving floors/lifts → hard `I_Error` abort. |
-| **Button overflow** | ⬜ present | `p_switch.c` `buttonlist[MAXBUTTONS]` (16) | >16 switch animations queued → the new switch silently never reverts (stuck texture). |
+| **Activeplats overflow** | ✅ fixed | `p_spec.h` `MAXPLATS` 30 → 8192 | vanilla aborted with `I_Error("no more plats")` on >30 simultaneously-moving floors/lifts (slaughtermaps). Limit raised past any realistic count (every loop sizes off the define). |
+| **Button overflow** | ✅ fixed | `p_spec.h` `MAXBUTTONS` 16 → 256 | vanilla aborted with `I_Error("no button slots left")` when many switches animated at once. Limit raised. |
 | Visplane / drawseg / vissprite / solidseg caps | ✅ fixed | `r_plane.c`/`r_bsp.c`/`r_things.c` | dynamic/grown (`5c5fd1d`) — render-only, no demo impact. |
 | Savegame buffer overrun | ✅ fixed | `g_game.c`/`p_saveg.c` | level-sized `Z_Malloc` + 64-bit swizzle (`148b89f`). |
 
