@@ -1209,7 +1209,17 @@ void A_VileChase (mobj_t* actor)
 		    info = corpsehit->info;
 		    
 		    P_SetMobjState (corpsehit,info->raisestate);
-		    corpsehit->height <<= 2;
+		    // VANILLA BUG (ghost monsters): vanilla only did height<<=2,
+		    // leaving a crushed corpse's radius (and absolute height) wrong
+		    // -> the resurrected monster passed through walls and was
+		    // melee/projectile-immune.  Boom-compat restores them properly.
+		    if (boom_compat && !netgame)
+		    {
+			corpsehit->height = info->height;
+			corpsehit->radius = info->radius;
+		    }
+		    else
+			corpsehit->height <<= 2;
 		    corpsehit->flags = info->flags;
 		    corpsehit->health = info->spawnhealth;
 		    corpsehit->target = NULL;
@@ -1471,9 +1481,10 @@ A_PainShootSkull
 	currentthinker = currentthinker->next;
     }
 
-    // if there are allready 20 skulls on the level,
-    // don't spit another one
-    if (count > 20)
+    // if there are allready 20 skulls on the level, don't spit another one.
+    // (Vanilla Pain-Elemental cap; Boom-compat mode lifts it -- but stay vanilla
+    //  in net games so we don't desync vanilla Chocolate/Crispy peers.)
+    if (count > 20 && !(boom_compat && !netgame))
 	return;
 
 

@@ -1104,6 +1104,12 @@ void D_DoomMain (void)
     printf ("M_LoadDefaults: Load system defaults.\n");
     M_LoadDefaults ();              // load before initing other systems
 
+    // MOD: -boom enables Boom-compatibility mode (lifts vanilla gameplay limits;
+    // breaks vanilla demo bit-exactness, so opt-in).  Parsed after the config so
+    // the flag overrides the persisted setting.  Also a Mod-menu toggle.
+    if (M_CheckParm ("-boom"))
+	boom_compat = 1;
+
     printf ("Z_Init: Init zone memory allocation daemon. \n");
     Z_Init ();
 

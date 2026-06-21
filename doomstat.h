@@ -296,6 +296,7 @@ extern	int		mod_fullcolor;	// truecolor 3D view (i_video.c / r_draw.c)
 extern	int		mod_hdsprites;	// HD truecolor sprite replacements (hd_sprite.c)
 extern	int		mod_hdtextures;	// HD truecolor wall/flat textures (hd_texture.c)
 extern	int		mod_voxels;	// voxel (KVX) model replacements (hd_voxel.c)
+extern	int		boom_compat;	// lift vanilla gameplay limits (forced off in netgames)
 
 
 

@@ -176,6 +176,12 @@ int		mod_hdsprites;
 int		mod_hdtextures;
 int		mod_voxels;
 
+// Boom-compatibility mode: lift the deliberate vanilla gameplay limits/quirks
+// that change the simulation (Pain-Elemental 20-skull cap, arch-vile "ghost
+// monster" resurrection).  Off = bit-exact vanilla (demos).  Always treated as
+// off in net games so we stay in sync with vanilla Chocolate/Crispy peers.
+int		boom_compat;
+
 // MOD: clamp for the free-look pitch (BASE-resolution horizon-shift pixels).
 #define LOOKDIRMAX	56
 

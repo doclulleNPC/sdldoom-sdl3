@@ -56,8 +56,8 @@ diverge. → group **(C)**.
 
 | Bug | Status | Where | Note |
 |---|---|---|---|
-| **"All ghosts"** — a crushed (height-0) monster that revives is unkillable & passes walls | ⬜ present | `p_map.c` `P_CheckPosition` / `p_enemy.c` arch-vile | Demo-load-bearing; leave unless a Boom-compat flag is added. |
-| **Lost Soul / Pain Elemental 20-skull limit** | ➖ deliberate | `p_enemy.c A_PainShootSkull` (`:1476`) | Intentional cap; lifting it (Boom) changes gameplay → flag-gated only. |
+| **"All ghosts"** — a crushed (height-0) monster that revives is unkillable & passes walls | ✅ Boom-compat | `p_enemy.c A_VileChase` | Vanilla by default; under `boom_compat` (and not in a netgame) the revived corpse gets its real `height`/`radius` back instead of `<<2`, so it's solid and killable. |
+| **Lost Soul / Pain Elemental 20-skull limit** | ✅ Boom-compat | `p_enemy.c A_PainShootSkull` (`:1476`) | Vanilla cap by default; `boom_compat` (and not in a netgame) lifts the 20-skull limit. |
 | **Lost soul / skull spawned inside a wall** | ⬜ present | `p_enemy.c A_PainShootSkull` | No position check on the new skull. Demo-sensitive. |
 | **Blockmap "wallrunning" / linedef-trigger skip** | ⬜ present | `p_maputl.c` blockmap iteration | Movement/precision; demo-load-bearing. |
 | **Self-referencing sector "deep water"** | N/A | — | a *feature* (mapping trick), not a bug. |
@@ -72,5 +72,17 @@ diverge. → group **(C)**.
 - **(C) the overflow crashes** — intercepts, spechit, activeplats, buttons — limit-removed
   (grown/bounded). Compatible with all non-overflowing demos.
 
-Deliberate limits (D, lost-soul cap etc.) and demo-load-bearing sim quirks are **left
-vanilla** unless a future Boom-compatibility mode flag-gates them.
+## Boom-compatibility mode
+
+The two deliberate sim-changing quirks above (all-ghosts vile resurrection, the
+20-skull Pain-Elemental cap) are now gated behind a **`boom_compat`** flag:
+
+- Toggle via **Options → Mod → Boom Compat**, the `-boom` command-line parm, or the
+  persisted `boom_compat` config key (`m_misc.c` `defaults[]`).
+- Both gates also require `!netgame` — Chocolate/Crispy lockstep netplay needs strict
+  vanilla behavior, so Boom-compat is forced off whenever a netgame is active.
+- The overflow fixes in (C) are **not** gated: they only enlarge/grow buffers and stay
+  bit-compatible with every non-overflowing vanilla demo, so they apply unconditionally.
+
+Remaining demo-load-bearing quirks (skull-in-wall, blockmap wallrunning) are left
+vanilla — they'd need their own opt-in and are not covered by this flag.
