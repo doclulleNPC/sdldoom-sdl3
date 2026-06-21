@@ -6,8 +6,9 @@ turned into concrete tasks against this fork — now scored against what the
 
 **Status legend:** ✅ done · 🟡 partial · ⬜ open · ➕ bonus (done, beyond Carmack's list)
 
-**Rough state:** groups 0–1 done · groups 2–3 partial · groups 4–6 open
-(group 4 networking has actually *regressed* — see below).
+**Rough state:** groups 0–1 done · groups 2–4 partial · groups 5–6 open
+(group 4 networking is back online — a Chocolate/Crispy-compatible lockstep
+client now plays co-op/DM; only the authoritative client/server model remains).
 
 ---
 
@@ -15,8 +16,10 @@ turned into concrete tasks against this fork — now scored against what the
 
 - [x] **Build on modern 64-bit Linux.** ✅ 64-bit clean (commit `73174aa`); the classic
       vanilla pointer/`int` truncation traps are fixed. Builds native Linux and Win64
-      (MinGW-w64). Known limitation: `p_saveg.c` still archives pointers as 32-bit ints,
-      so **savegames are not 64-bit-correct** — fixing this is a loose end.
+      (MinGW-w64). The old savegame loose end is **closed**: `p_saveg.c` now swizzles
+      indices through `intptr_t`/`uintptr_t` and `G_DoSaveGame` uses a level-sized buffer
+      (commit `148b89f`) — savegames are 64-bit-correct. `-fno-strict-aliasing` is now
+      mandatory in `build.sh` (the engine type-puns; see `LEGACY_FIXES.md`).
 - [x] **Modernize the build/SDL detection.** ✅ SDL3 via `pkg-config` (Linux) and
       `build.sh` + SDL3 SDK (Windows). The old `-m32` autotools path is left in place but
       **stale** — candidate for deletion once nobody needs it.
@@ -90,16 +93,31 @@ turned into concrete tasks against this fork — now scored against what the
       `footstep_tables.h`, `tools/`). *Bonus.*
 - [x] ➕ **Quake-style drop-down console** — ✅ (`c_console.c`). *Bonus.*
 
-## 4. Networking — ⬜ open (REGRESSED)
+## 4. Networking — 🟡 partial (was regressed; now back online)
 
-⚠️ The SDL3 port reduced `i_net.c` to a portable **single-player stub** — the original
-BSD-socket multiplayer no longer builds. So this group is further from done than vanilla.
+The SDL3 port had reduced `i_net.c` to a single-player stub. Multiplayer is now provided
+by a clean-room **Chocolate/Crispy-Doom-compatible client** — this engine joins a
+`chocolate-server`/`crispy-server` and plays co-op/DM against Chocolate or Crispy peers.
+(`i_udp.c` UDP transport + big-endian packet layer, `d_netcl.c` connection state machine +
+GAMEDATA tic windows, `d_net.c` loop integration; `-connect <host>` / `-netplayers <n>`.)
 
-- [ ] **Restore basic peer-to-peer netgame** on a modern socket API (`d_net.c`, `i_net.c`)
-      — lockstep tic-based.
-- [ ] **Packet-server model** — one node collects/rebroadcasts all tics (`d_net.c`).
-- [ ] **Client/server model** — authoritative server; larger tic-loop / `g_game.c`
-      rearchitecture.
+- [x] **Lockstep tic-based netgame on a modern socket API** — ✅ done. UDP, the Chocolate
+      wire format, reliable SYN/LAUNCH/GAMESTART handshake, ticcmd-diff GAMEDATA exchange,
+      35 Hz lockstep with acks/resends/clock-sync. Verified against real `chocolate-server`
+      3.1.1 and a 2-instance co-op (player 1 + 2, 630+ tics, **zero consistency failures**).
+- [x] **Packet-server model** — ✅ done. This *is* the Chocolate relay: one node
+      (`chocolate-server`/`crispy-server`) collects and rebroadcasts the merged tics, and
+      our client speaks that protocol. We also build the relay (`crispy-server`) for hosting.
+- [ ] **Client/server (authoritative) model** — ⬜ open. Odamex/ZDaemon-style server-
+      authoritative world deltas (late join, no desync death, many players). Evaluated
+      against Odamex's protobuf protocol and **deferred** — different protocol family,
+      effectively a rewrite, and it drops Chocolate interop. A negotiated `SDLDOOM_NET_1`
+      protocol (offered alongside `CHOCOLATE_DOOM_0` at SYN) is the clean path to extend
+      without breaking interop — see the net-protocol optimization notes.
+- **Determinism gate:** lockstep needs a bit-exact sim, so the sim-touching MOD features
+  (jump, free-look) are forced **off in net games** (`g_game.c`, `!netgame`); footsteps and
+  all render-only MOD features stay on. Any new `p_*`/`m_random` feature must gate on
+  `!netgame`.
 
 ## 5. 3D-accelerated renderer — ⬜ open
 
