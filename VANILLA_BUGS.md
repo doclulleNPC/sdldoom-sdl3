@@ -37,10 +37,10 @@ diverge. → group **(C)**.
 
 | Bug | Status | Where | Symptom |
 |---|---|---|---|
-| **Tutti-frutti** | ⬜ present | texture composite (`r_data.c`) + column mask `&127` (`r_draw.c`) | A wall texture shorter than the drawn span (or non-power-of-2) repeats undefined cache rows → garbage stripe. Mapper-triggered. |
-| **Medusa** | ⬜ present | `r_data.c` composite columns used as 2-sided **masked** midtextures | A multi-patch texture on a see-through line makes the masked drawer read a composite where it expects single posts → colour vomit + heavy slowdown. |
-| **Long wall error** | ⬜ present | `r_main.c` `R_PointToAngle` (16-bit BAM table) used in `r_bsp.c R_AddLine` | Walls longer than ~2048 units exceed the angle table's precision → wobbling/skewed textures on very long walls (common in modern maps). Render-only. |
-| **Fuzz past screen edge** | ⬜ check | `r_draw.c` `R_DrawFuzzColumn` `fuzzoffset` at `dc_yh==viewheight-1` | The spectre fuzz samples `±SCREENWIDTH`; at the bottom view row it can read/write one row out of the view rect. |
+| **Tutti-frutti** | ✅ fixed | `r_data.c` `R_GenerateLookup`/`R_GenerateComposite` | vanilla read single-patch columns directly from the WAD patch; a patch shorter than the texture ran the drawer past it → garbage. Now: columns not fully covered by one patch are forced through the composite, and the composite block is zero-filled (uncovered rows → palette 0, not heap garbage). Full-coverage columns are unchanged (still direct). Verified no regression on normal textures (MAP07 screenshot). |
+| **Medusa** | ⬜ present | `r_data.c` composite columns used as 2-sided **masked** midtextures | A multi-patch texture on a see-through line makes the masked drawer read a composite where it expects single posts → colour vomit + slowdown. Needs masked-drawer composite handling (separate path from tutti-frutti) — deferred. |
+| **Long wall error** | ⬜ present | `r_main.c` `R_PointToAngle` (16-bit BAM table) used in `r_bsp.c R_AddLine` | Walls longer than ~2048 units exceed the angle table's precision → wobbling/skewed textures on very long walls. Render-only; standard fix is a higher-precision `R_PointToAngle` — deferred (needs a trigger map to verify). |
+| **Fuzz past screen edge** | ➖ already clamped | `r_draw.c` `R_DrawFuzzColumn` | already carries vanilla's `dc_yl=1` / `dc_yh=viewheight-2` clamps — no out-of-view sampling beyond vanilla; nothing to fix. |
 | **Sprite "missing rotations"** crash | ✅ fixed | `info.c` `sprnames[]` | needs a terminator + `-fno-strict-aliasing` (`6f70b2c`, `LEGACY_FIXES`). |
 | Floor/ceiling black bands at hi-res | ✅ fixed | `r_plane.c` (`3d52c03`) | visplane rows were `byte`. |
 | Slime trails | N/A | (node-builder precision, baked into the WAD) | not an engine bug. |
