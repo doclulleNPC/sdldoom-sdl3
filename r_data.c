@@ -628,10 +628,16 @@ void R_InitFlats (void)
 {
     int		i;
 	
-    firstflat = W_GetNumForName ("F_START") + 1;
+    // Anchor firstflat at the FIRST (IWAD) F_START and lastflat at the LAST
+    // (PWAD) F_END, so the flat block spans every flat across all wads.
+    // Using the *last* F_START (W_GetNumForName, the vanilla behaviour) breaks
+    // when a PWAD adds its own F_START/F_END (e.g. e1-arenas.wad): firstflat
+    // then sits *after* the IWAD flats, so R_FlatNumForName returns negative
+    // indices for stock flats and R_DrawPlanes caches an out-of-range lump.
+    firstflat = W_CheckFirstNumForName ("F_START") + 1;
     lastflat = W_GetNumForName ("F_END") - 1;
     numflats = lastflat - firstflat + 1;
-	
+
     // Create translation table for global animation.
     flattranslation = Z_Malloc ((numflats+1)*4, PU_STATIC, 0);
     
@@ -653,7 +659,19 @@ void R_InitSpriteLumps (void)
 	
     firstspritelump = W_GetNumForName ("S_START") + 1;
     lastspritelump = W_GetNumForName ("S_END") - 1;
-    
+
+    // MOD: some map PWADs append a spurious *empty* S_START/S_END pair (e.g.
+    // e1-arenas.wad).  W_GetNumForName returns the last marker, so the sprite
+    // range collapses to nothing -> every sprite ends up with 0 frames and the
+    // first thing drawn kills the game with "R_ProjectSprite: invalid sprite
+    // frame".  When that happens, fall back to the FIRST (IWAD) S_START/S_END,
+    // i.e. the real, contiguous sprite block.
+    if (lastspritelump < firstspritelump)
+    {
+	firstspritelump = W_CheckFirstNumForName ("S_START") + 1;
+	lastspritelump  = W_CheckFirstNumForName ("S_END") - 1;
+    }
+
     numspritelumps = lastspritelump - firstspritelump + 1;
     spritewidth = Z_Malloc (numspritelumps*4, PU_STATIC, 0);
     spriteoffset = Z_Malloc (numspritelumps*4, PU_STATIC, 0);

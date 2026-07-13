@@ -399,6 +399,33 @@ int W_CheckNumForName (char* name)
 }
 
 
+//
+// W_CheckFirstNumForName
+// Like W_CheckNumForName but scans FORWARDS, returning the *first* lump with
+// this name (W_CheckNumForName returns the last).  Used to reach the IWAD's
+// original S_START/S_END sprite block when a PWAD appends a spurious empty one
+// (see R_InitSpriteLumps).  Returns -1 if not found.
+//
+int W_CheckFirstNumForName (char* name)
+{
+    union { char s[9]; int x[2]; } name8;
+    int		v1, v2, i;
+
+    strncpy (name8.s, name, 8);
+    name8.s[8] = 0;
+    strupr (name8.s);
+    v1 = name8.x[0];
+    v2 = name8.x[1];
+
+    for (i=0 ; i<numlumps ; i++)
+	if ( *(int *)lumpinfo[i].name == v1
+	     && *(int *)&lumpinfo[i].name[4] == v2)
+	    return i;
+
+    return -1;
+}
+
+
 
 
 //

@@ -526,8 +526,16 @@ void P_GroupLines (void)
     total = 0;
     for (i=0 ; i<numlines ; i++, li++)
     {
-	total++;
-	li->frontsector->linecount++;
+	// MOD: some PWAD linedefs have no front sidedef (sidenum[0]==-1), so
+	// P_LoadLineDefs left frontsector NULL.  Vanilla dereferences it here
+	// unconditionally and crashes (e.g. e1-arenas.wad E1M3, linedef 370).
+	// Guard it, and keep `total` in step with the second loop below (which
+	// only ever matches this line via its backsector).
+	if (li->frontsector)
+	{
+	    total++;
+	    li->frontsector->linecount++;
+	}
 
 	if (li->backsector && li->backsector != li->frontsector)
 	{
