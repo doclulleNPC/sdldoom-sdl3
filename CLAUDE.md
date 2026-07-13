@@ -54,6 +54,43 @@ upscale of 320x200). Key design:
   and `fullscreen_mode` (as `fullscreen`) alongside the classic settings. When
   adding a new persisted option, add a `default_t` row here and an `extern`.
 
+### SDL_GPU presentation backend (`-gpu`)
+
+There are two ways the 8-bit software frame reaches the screen, both in
+`i_video.c`:
+- **default — `SDL_Renderer`**: expand `screens[0]` through the palette into a
+  streaming `SDL_Texture` and `SDL_RenderTexture` it (with letterbox logical
+  presentation + console text via `SDL_RenderDebugText`).
+- **`-gpu` — the SDL3 low-level GPU pipeline**: the *same* expanded 32-bit frame
+  (`I_ExpandFrame`, shared by both paths) is streamed into a `SDL_GPUTexture`
+  and drawn as a fullscreen triangle through a minimal SPIR-V pipeline. Selected
+  by the `-gpu` command-line flag; **falls back to the renderer on any GPU/shader
+  failure**, so the flag can never make the game unlaunchable. Resolution,
+  aspect/letterbox (done with a centred `SDL_SetGPUViewport`), fullscreen,
+  truecolor view and the drop-down console all work identically.
+
+  Implementation notes for anyone extending it:
+  - The sampled texture is **`B8G8R8A8_UNORM`** to match the engine's ARGB8888
+    (`0xAARRGGBB`) palette bytes in little-endian memory — using `R8G8B8A8`
+    swaps red/blue.
+  - The two blit shaders are authored in GLSL under `tools/gpu/` and compiled to
+    SPIR-V, embedded as C arrays in the generated **`gpu_shaders.h`**. Regenerate
+    with `tools/gpu/gen_gpu_shaders.sh` (needs `glslang-tools`); the normal
+    `build.sh` stays a plain `gcc *.c` with no shader-compile step. The vertex
+    shader negates clip-space Y so DOOM's top-row-first framebuffer is upright.
+  - The console overlay can't use `SDL_RenderDebugText` (no `SDL_Renderer` under
+    `-gpu`), so it's reblitted into the 32-bit frame from an embedded public-
+    domain 8x8 font (**`con_font8x8.h`**), at the same BASE-coords×`hires` layout
+    as `I_DrawConsole`.
+  - `V_SetRes` must rebuild the GPU texture on a resolution change; its guard is
+    `if (renderer || gpu)` (not just `renderer`, which is NULL on the GPU path).
+  - Backend is chosen once at startup (no live renderer↔GPU switch); on failure
+    `I_GpuDestroy` tears the half-built device down before the renderer fallback.
+
+  Note: SDL3's **audio** is already the engine's only audio path (`i_sound.c`
+  uses `SDL_AudioStream`/`SDL_OpenAudioDeviceStream` for SFX and music) — there
+  is no pre-SDL3 audio layer left to port.
+
 ### Menus added by this port
 
 Beyond the stock Options menu, `m_menu.c` adds two text-drawn items (no graphic
@@ -123,6 +160,8 @@ Vanilla DOOM assumes 32-bit (ILP32) and stores pointers in `int`/aligns via `(in
 `main()` in `i_main.c` just stashes argv into the globals `myargc`/`myargv` and calls `D_DoomMain()` (`d_main.c`), which parses all command-line params, determines game mode, loads WADs, and enters `D_DoomLoop()`. Params are read with `M_CheckParm` (`m_argv.c`), not getopt. Useful flags:
 
 - `-fullscreen` — added by this SDL port (`i_video.c`).
+- `-gpu` — present via the SDL3 low-level GPU pipeline instead of `SDL_Renderer`
+  (falls back to the renderer if unavailable; see *SDL_GPU presentation backend*).
 - `-iwad`/implicit IWAD search, `-file <pwad>`, `-warp <ep> <map>`, `-skill N`, `-devparm`, `-nomonsters`, `-respawn`, `-fast`, `-turbo`, `-record`/`-playdemo`, `-2`/`-3`/`-4` (screen multiply / blocky scaling in `i_video.c`).
 
 ## Architecture
