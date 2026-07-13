@@ -79,9 +79,6 @@ int			showMessages;
 int			detailLevel;		
 int			screenblocks;		// has default
 
-// temp for screenblocks (0-9)
-int			screenSize;		
-
 // -1 = no quicksave slot picked!
 int			quickSaveSlot;          
 
@@ -192,7 +189,6 @@ void M_ChangeSensitivity(int choice);
 void M_SfxVol(int choice);
 void M_MusicVol(int choice);
 void M_ChangeDetail(int choice);
-void M_SizeDisplay(int choice);
 void M_StartGame(int choice);
 void M_Sound(int choice);
 
@@ -362,8 +358,6 @@ enum
     endgame,
     messages,
     detail,
-    scrnsize,
-    option_empty1,
     mousesens,
     option_empty2,
     soundvol,
@@ -378,8 +372,6 @@ menuitem_t OptionsMenu[]=
     {1,"M_ENDGAM",	M_EndGame,'e'},
     {1,"M_MESSG",	M_ChangeMessages,'m'},
     {1,"M_DETAIL",	M_ChangeDetail,'g'},
-    {2,"M_SCRNSZ",	M_SizeDisplay,'s'},
-    {-1,"",0},
     {2,"M_MSENS",	M_ChangeSensitivity,'m'},
     {-1,"",0},
     {1,"M_SVOL",	M_Sound,'s'},
@@ -1361,9 +1353,6 @@ void M_DrawOptions(void)
 
     M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(mousesens+1),
 		 10,mouseSensitivity);
-	
-    M_DrawThermo(OptionsDef.x,OptionsDef.y+LINEHEIGHT*(scrnsize+1),
-		 9,screenSize);
 
     // "Video" / "Keys" are text items (no graphic lump); draw at 2x so they
     // match the size of the graphic menu items above.
@@ -1556,29 +1545,6 @@ void M_ChangeDetail(int choice)
 
 
 
-void M_SizeDisplay(int choice)
-{
-    switch(choice)
-    {
-      case 0:
-	if (screenSize > 0)
-	{
-	    screenblocks--;
-	    screenSize--;
-	}
-	break;
-      case 1:
-	if (screenSize < 8)
-	{
-	    screenblocks++;
-	    screenSize++;
-	}
-	break;
-    }
-	
-
-    R_SetViewSize (screenblocks, detailLevel);
-}
 
 
 
@@ -1996,20 +1962,6 @@ boolean M_Responder (event_t* ev)
     if (!menuactive)
 	switch(ch)
 	{
-	  case KEY_MINUS:         // Screen size down
-	    if (automapactive || chat_on)
-		return false;
-	    M_SizeDisplay(0);
-	    S_StartSound(NULL,sfx_stnmov);
-	    return true;
-				
-	  case KEY_EQUALS:        // Screen size up
-	    if (automapactive || chat_on)
-		return false;
-	    M_SizeDisplay(1);
-	    S_StartSound(NULL,sfx_stnmov);
-	    return true;
-				
 	  case KEY_F1:            // Help key
 	    M_StartControlPanel ();
 
@@ -2343,7 +2295,6 @@ void M_Init (void)
     itemOn = currentMenu->lastOn;
     whichSkull = 0;
     skullAnimCounter = 10;
-    screenSize = screenblocks - 3;
     messageToPrint = 0;
     messageString = NULL;
     messageLastMenuActive = menuactive;
