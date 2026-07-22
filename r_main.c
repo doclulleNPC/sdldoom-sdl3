@@ -878,7 +878,13 @@ void R_SetupFrame (player_t* player)
 	{
 	    dy = ((i-centery)<<FRACBITS)+FRACUNIT/2;
 	    dy = abs(dy);
-	    yslope[i] = FixedDiv ( (viewwidth<<detailshift)/2*FRACUNIT, dy);
+	    // Must use viewwidth_nonwide (the 4:3 reference focal), matching
+	    // R_ExecuteSetViewSize's yslope and R_ClearPlanes' basexscale/
+	    // baseyscale (centerxfrac_nonwide).  Using the wide viewwidth here
+	    // makes the flat's vertical focal disagree with the horizontal
+	    // projection, so floors/ceilings swim as the view angle changes in
+	    // Hor+ widescreen.
+	    yslope[i] = FixedDiv ( (viewwidth_nonwide<<detailshift)/2*FRACUNIT, dy);
 	}
     }
 
