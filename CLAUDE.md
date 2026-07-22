@@ -162,7 +162,12 @@ Vanilla DOOM assumes 32-bit (ILP32) and stores pointers in `int`/aligns via `(in
 - `-fullscreen` — added by this SDL port (`i_video.c`).
 - `-gpu` — present via the SDL3 low-level GPU pipeline instead of `SDL_Renderer`
   (falls back to the renderer if unavailable; see *SDL_GPU presentation backend*).
-- `-iwad`/implicit IWAD search, `-file <pwad>`, `-warp <ep> <map>`, `-skill N`, `-devparm`, `-nomonsters`, `-respawn`, `-fast`, `-turbo`, `-record`/`-playdemo`, `-2`/`-3`/`-4` (screen multiply / blocky scaling in `i_video.c`).
+- `-iwad <file>` — use a specific IWAD (any name/case/path). `IdentifyVersion`
+  (`d_main.c`) loads it and derives `gamemode` by scanning its lump directory
+  (`D_ProbeIwadMode`: MAPxx→commercial, E4Mx→retail, E2Mx→registered,
+  E1Mx→shareware). Without `-iwad`, it auto-searches the hardcoded lowercase
+  names (`doom2.wad`, `doom.wad`, …) in DOOMWADDIR/cwd/`iwads/`.
+- `-file <pwad>`, `-warp <ep> <map>`, `-skill N`, `-devparm`, `-nomonsters`, `-respawn`, `-fast`, `-turbo`, `-record`/`-playdemo`, `-2`/`-3`/`-4` (screen multiply / blocky scaling in `i_video.c`).
 
 ## Architecture
 

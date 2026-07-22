@@ -628,6 +628,72 @@ static char* D_WadPath (const char* primary, const char* wad)
 
 
 //
+// D_ProbeIwadMode
+// MOD: determine the DOOM game mode of an arbitrary IWAD by scanning its lump
+// directory for the identifying map lumps.  This lets -iwad point at any IWAD
+// (any name, any case, any path) rather than relying on the auto-search, which
+// only probes a few hardcoded lowercase filenames.  Returns `indetermined` if
+// the file can't be read or contains no recognisable maps.
+//
+static GameMode_t D_ProbeIwadMode (const char* path)
+{
+    FILE*	f;
+    char	id[4];
+    int		numlumps, ofs, i;
+    int		has_e1 = 0, has_e2 = 0, has_e4 = 0, has_map = 0;
+
+    f = fopen (path, "rb");
+    if (!f)
+	return indetermined;
+
+    // WAD header: "IWAD"/"PWAD", lump count, directory offset (little-endian;
+    // this engine is LE-only for on-disk WAD data).
+    if (fread (id, 1, 4, f) != 4
+	|| fread (&numlumps, 4, 1, f) != 1
+	|| fread (&ofs, 4, 1, f) != 1
+	|| (memcmp (id, "IWAD", 4) && memcmp (id, "PWAD", 4))
+	|| numlumps < 0 || numlumps > 65536
+	|| fseek (f, ofs, SEEK_SET))
+    {
+	fclose (f);
+	return indetermined;
+    }
+
+    for (i = 0 ; i < numlumps ; i++)
+    {
+	char	rec[16];	// filepos(4) + size(4) + name(8)
+	char*	name;
+
+	if (fread (rec, 1, 16, f) != 16)
+	    break;
+	name = rec + 8;
+
+	// ExMy (episode maps) ...
+	if (name[0]=='E' && name[2]=='M' && name[4]==0
+	    && name[1]>='1' && name[1]<='4'
+	    && name[3]>='1' && name[3]<='9')
+	{
+	    if      (name[1]=='1') has_e1 = 1;
+	    else if (name[1]=='2') has_e2 = 1;
+	    else if (name[1]=='4') has_e4 = 1;
+	}
+	// ... or MAPxx (Doom II style)
+	else if (name[0]=='M' && name[1]=='A' && name[2]=='P'
+		 && name[3]>='0' && name[3]<='9'
+		 && name[4]>='0' && name[4]<='9')
+	    has_map = 1;
+    }
+    fclose (f);
+
+    if (has_map)	return commercial;	// DOOM II / TNT / Plutonia
+    if (has_e4)		return retail;		// Ultimate DOOM (4 episodes)
+    if (has_e2)		return registered;	// DOOM registered (3 episodes)
+    if (has_e1)		return shareware;	// DOOM shareware (E1 only)
+    return indetermined;
+}
+
+
+//
 // IdentifyVersion
 // Checks availability of IWAD files by name,
 // to determine whether registered/commercial features
@@ -665,6 +731,29 @@ void IdentifyVersion (void)
 	const char* base = SDL_GetBasePath ();	// exe dir (may be NULL)
 	snprintf (basedefault, sizeof(basedefault), "%ssdldoom.cfg",
 		  base ? base : "");
+    }
+
+    // MOD: an explicit -iwad <file> overrides the auto-search below.  Load
+    // exactly that file and derive the game mode from its lumps, so any IWAD
+    // (any name, case or path -- e.g. an uppercase DOOM.WAD, or one outside the
+    // search dirs) can be used.  The auto-search only ever finds hardcoded
+    // lowercase names in DOOMWADDIR/cwd/iwads.
+    {
+	int p = M_CheckParm ("-iwad");
+	if (p && p < myargc-1)
+	{
+	    char* iwad = myargv[p+1];
+
+	    if (access (iwad, R_OK))
+		I_Error ("-iwad: cannot read '%s'", iwad);
+
+	    gamemode = D_ProbeIwadMode (iwad);
+	    if (gamemode == indetermined)
+		I_Error ("-iwad: '%s' is not a recognisable DOOM IWAD", iwad);
+
+	    D_AddFile (iwad);
+	    return;
+	}
     }
 
     if (M_CheckParm ("-shdev"))
