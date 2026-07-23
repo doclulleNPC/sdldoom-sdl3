@@ -674,12 +674,14 @@ I_InitSound()
 
 
 //
-// MUSIC API -- OGG playback via stb_vorbis (MOD).
+// MUSIC API -- OGG playback via stb_vorbis, plus native MUS/MIDI via the FM
+// synth in i_mus.c (MOD).
 //
-// DOOM's own music lumps are MUS/MIDI, which we don't synthesize; only OGG
-// replacement lumps (a music pack) actually play.  A non-OGG song registers as
-// "no music" and is silently skipped.  Decoded OGG is fed to a second SDL audio
-// stream bound to the same device as the SFX, so SDL mixes + resamples it.
+// OGG replacement lumps (a music pack) decode through stb_vorbis; DOOM's own
+// MUS lumps and Standard MIDI Files render through the GENMIDI FM synth
+// (i_mus.c).  Anything else registers as "no music" and is silently skipped.
+// Each is fed to a second SDL audio stream bound to the same device as the
+// SFX, so SDL mixes + resamples it.
 //
 int			i_music_gain = 15;	// 0..15 (set by I_SetMusicVolume)
 
@@ -772,11 +774,11 @@ int I_RegisterSong(void* data, int length)
 	return 0;
     }
 
-    // Native MUS via the FM synth.
+    // Native MUS lump or Standard MIDI File via the FM synth.
     if (!mus_geninit) { MUS_Init (); mus_geninit = 1; }
     if (MUS_Register (p, length)) { mus_kind = 2; return 2; }
 
-    return 0;	// e.g. raw MIDI -- unsupported
+    return 0;	// unrecognised lump -- no music
 }
 
 void I_PlaySong(int handle, int looping)

@@ -493,17 +493,19 @@ fixed_t R_ScaleFromGlobalAngle (angle_t visangle)
     num = FixedMul(projection,sineb)<<detailshift;
     den = FixedMul(rw_distance,sinea);
 
+extern int max_rwscale;
+
     if (den > num>>16)
     {
 	scale = FixedDiv (num, den);
 
-	if (scale > 64*FRACUNIT)
-	    scale = 64*FRACUNIT;
+	if (scale > max_rwscale)
+	    scale = max_rwscale;
 	else if (scale < 256)
 	    scale = 256;
     }
     else
-	scale = 64*FRACUNIT;
+	scale = max_rwscale;
 	
     return scale;
 }

@@ -27,16 +27,10 @@
 static const char
 rcsid[] = "$Id: r_data.c,v 1.4 1997/02/03 16:47:55 b1 Exp $";
 
-#ifdef __BEOS__
-#ifdef __GNUC__
-extern void *alloca(int);
-#else
-#include <alloca.h>
-#endif
-#endif /* __BEOS__ */
-
 #ifdef _WIN32
 #include <malloc.h>	/* alloca() prototype on MinGW (avoids pointer truncation on x64) */
+#else
+#include <alloca.h>
 #endif
 
 #include "m_swap.h"

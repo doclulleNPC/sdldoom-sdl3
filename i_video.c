@@ -454,27 +454,27 @@ static void I_GpuConsoleGlyph (Uint32* px, int bx, int by, unsigned char c, Uint
 
 static void I_GpuConsoleText (Uint32* px, int bx, int by, const char* s, Uint32 col)
 {
-    for ( ; *s ; s++, bx += 8)
+    for ( ; *s ; s++, bx += 6)
 	I_GpuConsoleGlyph (px, bx, by, (unsigned char)*s, col);
 }
 
 static void I_GpuDrawConsole (Uint32* px)
 {
     int			h, y, i;
-    const Uint32	col = 0xffd0d0d0u;	// ARGB grey, matches I_DrawConsole
+    const Uint32	col = 0xffe0e0e0u;	// ARGB light grey
 
     h = C_BaseHeight ();
     if (h <= 0)
 	return;
 
-    y = h - 10;
-    I_GpuConsoleText (px, 4, y, C_InputLine (), col);
-    y -= 10;
+    y = h - 9;
+    I_GpuConsoleText (px, 6, y, C_InputLine (), col);
+    y -= 8;
     for (i = 0; i < C_ScrollCount () && y > -8; i++)
     {
 	const char* line = C_ScrollLine (i);
 	if (line && line[0])
-	    I_GpuConsoleText (px, 4, y, line, col);
+	    I_GpuConsoleText (px, 6, y, line, col);
 	y -= 8;
     }
 }
@@ -703,7 +703,7 @@ static void I_GpuPresent (void)
 //
 void I_DrawConsole (void)
 {
-    int		h, y, i;
+    int		h, i;
     float	s;
 
     if (renderer == NULL)
@@ -712,20 +712,27 @@ void I_DrawConsole (void)
     if (h <= 0)
 	return;
 
-    s = (float) hires;
+    // Use a smaller, cleaner font scale so console text is compact, sharp,
+    // and doesn't get oversized/blocky at high resolutions.
+    s = (hires > 1) ? ((float)hires * 0.65f) : 0.75f;
     SDL_SetRenderScale (renderer, s, s);
-    SDL_SetRenderDrawColor (renderer, 0xd0, 0xd0, 0xd0, 0xff);
+    SDL_SetRenderDrawColor (renderer, 0xe0, 0xe0, 0xe0, 0xff);
 
-    // input line near the bottom of the panel, scrollback rising above it
-    y = h - 10;
-    SDL_RenderDebugText (renderer, 4, y, C_InputLine ());
-    y -= 10;
-    for (i = 0; i < C_ScrollCount () && y > -8; i++)
+    // Calculate positions in scaled render coordinates
+    float inv_s = 1.0f / s;
+    float base_scale = (float) hires;
+    float x_pos = 6.0f * base_scale * inv_s;
+    float y_pos = ((float)h - 9.0f) * base_scale * inv_s;
+    float line_step = 8.0f * base_scale * inv_s;
+
+    SDL_RenderDebugText (renderer, x_pos, y_pos, C_InputLine ());
+    y_pos -= line_step;
+    for (i = 0; i < C_ScrollCount () && y_pos > -10.0f; i++)
     {
 	const char* line = C_ScrollLine (i);
 	if (line && line[0])
-	    SDL_RenderDebugText (renderer, 4, y, line);
-	y -= 8;
+	    SDL_RenderDebugText (renderer, x_pos, y_pos, line);
+	y_pos -= line_step;
     }
 
     SDL_SetRenderScale (renderer, 1.0f, 1.0f);

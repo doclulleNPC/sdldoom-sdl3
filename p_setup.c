@@ -256,6 +256,8 @@ void P_LoadSectors (int lump)
 	ss->special = SHORT(ms->special);
 	ss->tag = SHORT(ms->tag);
 	ss->thinglist = NULL;
+	ss->cachedheight = -1;
+	ss->scaleindex = 0;
     }
 	
     Z_Free (data);

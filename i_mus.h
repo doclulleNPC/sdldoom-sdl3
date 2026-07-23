@@ -2,11 +2,12 @@
 //-----------------------------------------------------------------------------
 //
 // DESCRIPTION:
-//	From-scratch MUS music player (MOD addition).
-//	Parses DOOM's MUS lumps and renders them with a small 2-operator FM
-//	synth driven by the IWAD's GENMIDI instrument patches -- an OPL-style
-//	(Adlib) sound, without ZMusic or any external dependency.  Output is fed
-//	into the same SDL audio mix as the SFX and the OGG path (see i_sound.c).
+//	From-scratch MUS/MIDI music player (MOD addition).
+//	Parses DOOM's MUS lumps and Standard MIDI Files (.mid/SMF) and renders
+//	them with a small 2-operator FM synth driven by the IWAD's GENMIDI
+//	instrument patches -- an OPL-style (Adlib) sound, without ZMusic or any
+//	external dependency.  Output is fed into the same SDL audio mix as the
+//	SFX and the OGG path (see i_sound.c).
 //
 //-----------------------------------------------------------------------------
 
@@ -18,7 +19,8 @@
 // Load GENMIDI from the WAD (once).  Returns false if absent.
 boolean	MUS_Init (void);
 
-// Parse a MUS lump.  Returns false if it is not MUS or GENMIDI is missing.
+// Parse a MUS lump or a Standard MIDI File.  Returns false if it is neither
+// (or GENMIDI is missing).
 boolean	MUS_Register (const void* data, int length);
 
 // Begin/stop playback (Start may be called again to restart).

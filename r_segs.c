@@ -197,13 +197,54 @@ R_RenderMaskedSegRange
 //
 // R_RenderSegLoop
 // Draws zero, one, or two textures (and possibly a masked
-//  texture) for walls.
-// Can draw or mark the starting pixel of floor and ceiling
-//  textures.
-// CALLED: CORE LOOPING ROUTINE.
-//
-#define HEIGHTBITS		12
-#define HEIGHTUNIT		(1<<HEIGHTBITS)
+int max_rwscale = 64 * FRACUNIT;
+static int heightbits = 12;
+static int heightunit = (1 << 12);
+static int invhgtbits = 4;
+
+static const struct
+{
+    int clamp;
+    int heightbits;
+} scale_values[8] = {
+    {2048 * FRACUNIT, 12},
+    {1024 * FRACUNIT, 12},
+    {1024 * FRACUNIT, 11},
+    { 512 * FRACUNIT, 11},
+    { 512 * FRACUNIT, 10},
+    { 256 * FRACUNIT, 10},
+    { 256 * FRACUNIT,  9},
+    { 128 * FRACUNIT,  9}
+};
+
+void R_FixWiggle (sector_t *sector)
+{
+    static int lastheight = 0;
+    int height = (sector->ceilingheight - sector->floorheight) >> FRACBITS;
+
+    if (height < 1)
+        height = 1;
+
+    if (height != lastheight)
+    {
+        lastheight = height;
+
+        if (height != sector->cachedheight)
+        {
+            sector->cachedheight = height;
+            sector->scaleindex = 0;
+            height >>= 7;
+
+            while (height >>= 1)
+                sector->scaleindex++;
+        }
+
+        max_rwscale = scale_values[sector->scaleindex].clamp;
+        heightbits  = scale_values[sector->scaleindex].heightbits;
+        heightunit  = (1 << heightbits);
+        invhgtbits  = FRACBITS - heightbits;
+    }
+}
 
 void R_RenderSegLoop (void)
 {
@@ -221,7 +262,7 @@ void R_RenderSegLoop (void)
     for ( ; rw_x < rw_stopx ; rw_x++)
     {
 	// mark floor / ceiling areas
-	yl = (topfrac+HEIGHTUNIT-1)>>HEIGHTBITS;
+	yl = (topfrac+heightunit-1)>>heightbits;
 
 	// no space above wall?
 	if (yl < ceilingclip[rw_x]+1)
@@ -242,7 +283,7 @@ void R_RenderSegLoop (void)
 	    }
 	}
 		
-	yh = bottomfrac>>HEIGHTBITS;
+	yh = bottomfrac>>heightbits;
 
 	if (yh >= floorclip[rw_x])
 	    yh = floorclip[rw_x]-1;
@@ -298,7 +339,7 @@ void R_RenderSegLoop (void)
 	    if (toptexture)
 	    {
 		// top wall
-		mid = pixhigh>>HEIGHTBITS;
+		mid = pixhigh>>heightbits;
 		pixhigh += pixhighstep;
 
 		if (mid >= floorclip[rw_x])
@@ -328,7 +369,7 @@ void R_RenderSegLoop (void)
 	    if (bottomtexture)
 	    {
 		// bottom wall
-		mid = (pixlow+HEIGHTUNIT-1)>>HEIGHTBITS;
+		mid = (pixlow+heightunit-1)>>heightbits;
 		pixlow += pixlowstep;
 
 		// no space above wall?
@@ -434,6 +475,7 @@ R_StoreWallRange
     rw_stopx = stop+1;
     
     // calculate scale at both ends and step
+    R_FixWiggle(frontsector);
     ds_p->scale1 = rw_scale = 
 	R_ScaleFromGlobalAngle (viewangle + xtoviewangle[start]);
     
@@ -461,6 +503,7 @@ R_StoreWallRange
 	}
 #endif
 	ds_p->scale2 = ds_p->scale1;
+	ds_p->scalestep = rw_scalestep = 0;
     }
     
     // calculate texture boundaries
@@ -695,29 +738,29 @@ R_StoreWallRange
 
     
     // calculate incremental stepping values for texture edges
-    worldtop >>= 4;
-    worldbottom >>= 4;
+    worldtop >>= invhgtbits;
+    worldbottom >>= invhgtbits;
 	
     topstep = -FixedMul (rw_scalestep, worldtop);
-    topfrac = (centeryfrac>>4) - FixedMul (worldtop, rw_scale);
+    topfrac = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldtop*rw_scale)>>FRACBITS);
 
     bottomstep = -FixedMul (rw_scalestep,worldbottom);
-    bottomfrac = (centeryfrac>>4) - FixedMul (worldbottom, rw_scale);
+    bottomfrac = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldbottom*rw_scale)>>FRACBITS);
 	
     if (backsector)
     {	
-	worldhigh >>= 4;
-	worldlow >>= 4;
+	worldhigh >>= invhgtbits;
+	worldlow >>= invhgtbits;
 
 	if (worldhigh < worldtop)
 	{
-	    pixhigh = (centeryfrac>>4) - FixedMul (worldhigh, rw_scale);
+	    pixhigh = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldhigh*rw_scale)>>FRACBITS);
 	    pixhighstep = -FixedMul (rw_scalestep,worldhigh);
 	}
 	
 	if (worldlow > worldbottom)
 	{
-	    pixlow = (centeryfrac>>4) - FixedMul (worldlow, rw_scale);
+	    pixlow = ((int64_t)centeryfrac>>invhgtbits) - (((int64_t)worldlow*rw_scale)>>FRACBITS);
 	    pixlowstep = -FixedMul (rw_scalestep,worldlow);
 	}
     }
