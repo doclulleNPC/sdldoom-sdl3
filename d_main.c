@@ -377,8 +377,11 @@ void D_Display (void)
 	    tics = nowtime - wipestart;
 	} while (!tics);
 	wipestart = nowtime;
+	// MOD: run the melt at 2x speed (100% faster) by advancing two melt
+	// steps per elapsed tic.  Scaling the tic count (rather than the per-
+	// column fall) speeds the staggered start and the fall uniformly.
 	done = wipe_ScreenWipe(wipe_Melt
-			       , 0, 0, SCREENWIDTH, SCREENHEIGHT, tics);
+			       , 0, 0, SCREENWIDTH, SCREENHEIGHT, tics*2);
 	I_UpdateNoBlit ();
 	M_Drawer ();                            // menu is drawn even on top of wipes
 	I_FinishUpdate ();                      // page flip or blit buffer
