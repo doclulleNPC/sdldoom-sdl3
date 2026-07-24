@@ -1,15 +1,20 @@
-# Voxels: building `run/voxels.wad`
+# Voxels: building `run/ID0/voxels.wad`
 
 The engine's voxel renderer (`hd_voxel.c`) does **not** read GZDoom pk3s. It
-reads a small purpose-built PWAD, `run/voxels.wad`, that is generated from the
+reads a small purpose-built PWAD, `voxels.wad`, that is generated from the
 **Voxel Doom** pk3 by `tools/gen_voxels.py`.
+
+The HD/voxel data files (`hdsprites.wad`, `hdtextures.wad`, `voxels.wad`) live
+in the **`run/ID0/`** resource folder; the `hd_*` loaders look there first and
+fall back to `run/` for the legacy layout. `gen_voxels.py` mirrors this: it
+reads/writes `run/ID0/` if the pk3 is there, else `run/`.
 
 ## How `voxels.wad` is created
 
-Source: `run/VoxelDoom_v2.4.pk3` (a GZDoom mod — see Credits below).
+Source: `run/ID0/VoxelDoom_v2.4.pk3` (a GZDoom mod — see Credits below).
 
 ```sh
-python tools/gen_voxels.py        # reads run/VoxelDoom_v2.4.pk3 -> writes run/voxels.wad
+python tools/gen_voxels.py        # reads run/ID0/VoxelDoom_v2.4.pk3 -> writes run/ID0/voxels.wad
 ```
 
 What the script does:

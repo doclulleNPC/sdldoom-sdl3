@@ -61,6 +61,19 @@ static int rd32 (unsigned char* p)
     return (int)(p[0] | (p[1]<<8) | (p[2]<<16) | (p[3]<<24));
 }
 
+// MOD: HD data files live in the ID0/ resource folder (see run/ID0/); fall back
+// to the current directory for the legacy in-run/ layout.
+static FILE* HD_OpenData (const char* name)
+{
+    char	path[256];
+    FILE*	f;
+
+    snprintf (path, sizeof(path), "ID0/%s", name);
+    if ((f = fopen (path, "rb")))
+	return f;
+    return fopen (name, "rb");
+}
+
 static void HD_TexInit (void)
 {
     unsigned char	hdr[12];
@@ -69,7 +82,7 @@ static void HD_TexInit (void)
 
     tex_inited = -1;
 
-    texwad = fopen ("hdtextures.wad", "rb");
+    texwad = HD_OpenData ("hdtextures.wad");
     if (!texwad)
 	return;
     if (fread (hdr, 1, 12, texwad) != 12)

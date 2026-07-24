@@ -105,6 +105,19 @@ void HD_SpriteReset (void)
     hd_bytes = 0;
 }
 
+// MOD: HD data files live in the ID0/ resource folder (see run/ID0/); fall back
+// to the current directory for the legacy in-run/ layout.
+static FILE* HD_OpenData (const char* name)
+{
+    char	path[256];
+    FILE*	f;
+
+    snprintf (path, sizeof(path), "ID0/%s", name);
+    if ((f = fopen (path, "rb")))
+	return f;
+    return fopen (name, "rb");
+}
+
 static void HD_Init (void)
 {
     FILE*		f;
@@ -114,7 +127,7 @@ static void HD_Init (void)
 
     hd_inited = -1;				// assume failure until proven
 
-    f = fopen ("hdsprites.wad", "rb");
+    f = HD_OpenData ("hdsprites.wad");
     if (!f)
 	return;
     fseek (f, 0, SEEK_END);

@@ -23,7 +23,11 @@
 import os, zipfile, struct, sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-RUN  = os.path.join(ROOT, "..", "run")
+# HD/voxel source data lives in run/ID0/ (the resource folder read by the
+# hd_* loaders).  Fall back to run/ for the legacy layout.
+RUN  = os.path.join(ROOT, "..", "run", "ID0")
+if not os.path.exists(os.path.join(RUN, "VoxelDoom_v2.4.pk3")):
+    RUN = os.path.join(ROOT, "..", "run")
 SRC  = os.path.join(RUN, "VoxelDoom_v2.4.pk3")
 OUT  = os.path.join(RUN, "voxels.wad")
 

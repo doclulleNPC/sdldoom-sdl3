@@ -246,6 +246,20 @@ static void VOX_ParseDef (char* text, int len)
 // ---------------------------------------------------------------------------
 // WAD load + def resolution
 // ---------------------------------------------------------------------------
+
+// MOD: HD data files live in the ID0/ resource folder (see run/ID0/); fall back
+// to the current directory for the legacy in-run/ layout.
+static FILE* HD_OpenData (const char* name)
+{
+    char	path[256];
+    FILE*	f;
+
+    snprintf (path, sizeof(path), "ID0/%s", name);
+    if ((f = fopen (path, "rb")))
+	return f;
+    return fopen (name, "rb");
+}
+
 static void VOX_Init (void)
 {
     FILE*		f;
@@ -255,7 +269,7 @@ static void VOX_Init (void)
 
     vox_inited = -1;
 
-    f = fopen ("voxels.wad", "rb");
+    f = HD_OpenData ("voxels.wad");
     if (!f)
 	return;
     fseek (f, 0, SEEK_END);
