@@ -122,10 +122,16 @@ static void VOX_Decomment (char* s, int len)
     {
 	if (s[i]=='/' && i+1<len && s[i+1]=='*')
 	{
+	    // Scan to the closing "*/" testing the pair AHEAD (s[i],s[i+1]).
+	    // The old code tested s[i-1]=='*', but s[i-1] had already been
+	    // blanked to ' ' the previous iteration, so "*/" was never found
+	    // and the first block comment swallowed the rest of the file
+	    // (VOXELDEF then yielded only its pre-comment defs).
 	    s[i]=s[i+1]=' ';
-	    for (i+=2 ; i<len && !(s[i-1]=='*' && s[i]=='/') ; i++)
+	    for (i+=2 ; i+1<len && !(s[i]=='*' && s[i+1]=='/') ; i++)
 		if (s[i]!='\n') s[i]=' ';
-	    if (i<len) s[i]=' ';
+	    if (i<len)   s[i]   = ' ';		// blank '*' (or last char if unterminated)
+	    if (i+1<len) { s[i+1] = ' '; i++; }	// blank '/', land on it (for-loop i++ steps past)
 	}
 	else if (s[i]=='/' && i+1<len && s[i+1]=='/')
 	{

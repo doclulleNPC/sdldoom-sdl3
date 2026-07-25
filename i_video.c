@@ -107,6 +107,7 @@ static void I_BuildTrueColormaps (void)
     // Derive each light level's brightness once, from the 8-bit colormap.
     if (!cm_dim_ready)
     {
+	int valid = 0;
 	for (row=0 ; row<32 ; row++)
 	{
 	    double num=0, den=0;
@@ -117,8 +118,15 @@ static void I_BuildTrueColormaps (void)
 		num += ((l>>16)&0xff)+((l>>8)&0xff)+(l&0xff);
 	    }
 	    fc_lightdim[row] = den>0 ? num/den : 1.0;
+	    if (den>0) valid = 1;
 	}
-	cm_dim_ready = 1;
+	// Only lock the table in once the palette is actually populated.
+	// I_BuildTrueColormaps can fire (via I_CaptureTrueColorView) before the
+	// first I_SetPalette, when palette[] is still zero -> den==0 -> every
+	// level = 1.0.  Locking that in rendered the whole truecolor view
+	// fullbright forever ("alle Sektoren max hell").  I_SetPalette calls us
+	// again with a real palette, so just don't commit until it's valid.
+	if (valid) cm_dim_ready = 1;
     }
 
     // Light levels 0..31: smooth-dim the true palette colour (no snapping).
