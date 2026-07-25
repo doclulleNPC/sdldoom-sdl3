@@ -465,6 +465,39 @@ static int splatcmp (const void* a, const void* b)
 
 
 // ---------------------------------------------------------------------------
+// Public: world-space horizontal bounding radius (map units, 16.16) of the
+// voxel that replaces this sprite frame, or 0 if there is no voxel / voxels
+// are unavailable.  R_ProjectSprite uses it to widen the vissprite so a model
+// wider than its sprite isn't clipped at the sprite's edges.  vr>0 exactly
+// when HD_DrawVoxel will render, so the sprite fallback never gets widened
+// bounds.
+// ---------------------------------------------------------------------------
+fixed_t HD_VoxelWorldRadius (const char* name8)
+{
+    voxdef_t*	d;
+    voxmodel_t*	m;
+    int		hi, lo;
+
+    if (!vox_inited)
+	VOX_Init ();
+    if (vox_inited != 1)
+	return 0;
+    d = VOX_Lookup (name8);
+    if (!d)
+	return 0;
+    m = VOX_Model (d);
+    if (!m || m->ncells <= 0)
+	return 0;
+
+    hi = m->sizex > m->sizey ? m->sizex : m->sizey;
+    lo = m->sizex > m->sizey ? m->sizey : m->sizex;
+    // circumscribed-circle radius of the sizex*sizey footprint in voxels, as a
+    // cheap integer over-estimate ((hi + lo/2)/2), scaled to map units/voxel.
+    return FixedMul (d->scale, (fixed_t)((hi + (lo>>1)) << FRACBITS) >> 1);
+}
+
+
+// ---------------------------------------------------------------------------
 // Public: draw the voxel for this sprite frame
 // ---------------------------------------------------------------------------
 int HD_DrawVoxel (vissprite_t* vis, const char* name8)

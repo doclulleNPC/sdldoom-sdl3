@@ -21,6 +21,7 @@ struct vissprite_s;
 // Returns 1 if a voxel existed and was drawn, 0 if the caller should fall back
 // to the normal sprite/HD-sprite path.  Lazily opens voxels.wad on first use.
 int HD_DrawVoxel (struct vissprite_s* vis, const char* name8);
+fixed_t HD_VoxelWorldRadius (const char* name8);
 
 // Free all decoded voxel models (called at level load).
 void HD_VoxelReset (void);

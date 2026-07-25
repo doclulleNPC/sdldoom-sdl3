@@ -587,6 +587,7 @@ void R_ProjectSprite (mobj_t* thing)
     
     int			x1;
     int			x2;
+    int			voxcx;		// MOD: mobj-centre screen x (voxel widen)
 
     spritedef_t*	sprdef;
     spriteframe_t*	sprframe;
@@ -654,21 +655,39 @@ void R_ProjectSprite (mobj_t* thing)
 	flip = (boolean)sprframe->flip[0];
     }
     
-    // calculate edges of the shape
-    tx -= spriteoffset[lump];	
+    // calculate edges of the shape.  voxcx = the mobj-centre screen x, captured
+    // before tx is shifted by the sprite offset (used to widen for a voxel).
+    voxcx = (centerxfrac + FixedMul (tx,xscale)) >> FRACBITS;
+    tx -= spriteoffset[lump];
     x1 = (centerxfrac + FixedMul (tx,xscale) ) >>FRACBITS;
 
     // off the right side?
     if (x1 > viewwidth)
 	return;
-    
+
     tx +=  spritewidth[lump];
     x2 = ((centerxfrac + FixedMul (tx,xscale) ) >>FRACBITS) - 1;
 
     // off the left side
     if (x2 < 0)
 	return;
-    
+
+    // MOD: a voxel model can be wider than the sprite it replaces; widen the
+    // vissprite x-range (hence the per-column clip R_DrawSprite builds) so the
+    // voxel isn't sliced off at the sprite's edges (dead-marine head / lamp
+    // cut-off).  HD_VoxelWorldRadius>0 exactly when the voxel will be drawn, so
+    // the sprite fallback is never handed a widened, out-of-range column span.
+    if (truecolor && mod_voxels)
+    {
+	fixed_t	vr = HD_VoxelWorldRadius (lumpinfo[lump+firstspritelump].name);
+	if (vr > 0)
+	{
+	    int	vhw = FixedMul (vr, xscale) >> FRACBITS;
+	    if (voxcx - vhw < x1) x1 = voxcx - vhw;
+	    if (voxcx + vhw > x2) x2 = voxcx + vhw;
+	}
+    }
+
     // store information in a vissprite
     vis = R_NewVisSprite ();
     vis->mobjflags = thing->flags;
