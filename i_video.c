@@ -178,6 +178,7 @@ boolean		grabMouse;
 
 extern boolean	consoleactive;		// c_console.h
 static int	window_focused = 1;
+extern int	fullscreen_mode;	// defined below
 
 // Grab (relative-motion) the mouse only while actually playing -- release it
 // when the menu or console is up (so the OS cursor is usable) or we lose focus.
@@ -189,6 +190,14 @@ static void I_ApplyMouseGrab (void)
     if (window && want != applied)
     {
 	SDL_SetWindowRelativeMouseMode (window, want ? true : false);
+	// Fully release the mouse in windowed mode when we let go (menu /
+	// console / lost focus): also un-hide the OS cursor so it is visible
+	// and can leave the window.  While playing (or in fullscreen, where
+	// there is nowhere to go) keep it hidden.
+	if (want || fullscreen_mode)
+	    SDL_HideCursor ();
+	else
+	    SDL_ShowCursor ();
 	applied = want;
     }
 }
