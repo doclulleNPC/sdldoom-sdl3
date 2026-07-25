@@ -497,7 +497,10 @@ int HD_DrawVoxel (vissprite_t* vis, const char* name8)
     }
 
     mupv = d->scale;				// map units per voxel
-    yaw  = vis->mobjangle + d->angle;
+    // +ANG180: the KVX models' forward axis is opposite this engine's angle
+    // convention, so without this monsters face away from their movement
+    // ("laufen rückwärts").  Applied uniformly; symmetric props are unaffected.
+    yaw  = vis->mobjangle + d->angle + ANG180;
     cosv = finecosine[yaw >> ANGLETOFINESHIFT];
     sinv = finesine  [yaw >> ANGLETOFINESHIFT];
 
@@ -534,7 +537,14 @@ int HD_DrawVoxel (vissprite_t* vis, const char* name8)
 	sxc = (centerxfrac + FixedMul (txp, xscale)) >> FRACBITS;
 	syc = (centeryfrac - FixedMul (az - viewz, xscale)) >> FRACBITS;
 
-	vsz = FixedMul (mupv, xscale) >> FRACBITS;
+	// Splat one voxel as a screen square.  A voxel is a CUBE, so its screen
+	// footprint is larger than the flat projected size -- and adjacent surface
+	// voxels on oblique/curved faces sit more than one flat-size apart, which
+	// left the dark seams between cubes ("Spalten zwischen den Würfeln").
+	// Oversize the splat (~1.5x + 1px) so neighbours overlap and the model
+	// reads as solid instead of a loose grid of points.
+	vsz = (FixedMul (mupv, xscale) >> FRACBITS);
+	vsz = vsz + (vsz >> 1) + 1;
 	if (vsz < 1) vsz = 1;
 	half = vsz >> 1;
 

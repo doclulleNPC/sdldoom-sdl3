@@ -87,6 +87,7 @@ int		dc_hdw, dc_hdh;		// HD image dimensions
 int		dc_hu;			// HD column (precomputed u)
 int		dc_texheight;		// original texture height (v mapping)
 int		dc_texhmask;		// original height-1 (v wrap)
+int		dc_hvstep;		// HD rows per texel, 16.16 (full-res v)
 unsigned int*	ds_hdsrc;		// HD flat source (NULL = none)
 int		ds_hdw, ds_hdh;		// HD flat dimensions
 int		ds_hush, ds_hvsh;	// log2(dim)-6 (64-unit tile -> HD sub-sample)
@@ -168,9 +169,18 @@ void R_DrawColumn (void)
 	    dim = fc_lightdim[row];
 	do
 	{
-	    int		tv = (frac>>FRACBITS) & dc_texhmask;
-	    int		hv = (int)((long long)tv * dc_hdh / dc_texheight);
-	    unsigned	px = dc_hdsrc[hv*dc_hdw + dc_hu];
+	    // Sample the HD image at FULL vertical resolution.  Wrap the INTEGER
+	    // texel with dc_texhmask exactly like vanilla (so non-power-of-2
+	    // texture heights -- common on doors -- wrap identically and don't
+	    // garble), then carry the sub-texel fraction into the HD row so the
+	    // result is crisp instead of collapsed to vanilla resolution.
+	    // dc_hvstep is "HD rows per texel" in 16.16 -> fw*dc_hvstep is 32.32.
+	    unsigned	tv = ((unsigned)(frac>>FRACBITS)) & dc_texhmask;
+	    unsigned	fw = (tv<<FRACBITS) | ((unsigned)frac & (FRACUNIT-1));
+	    int		hv = (int)(((unsigned long long)fw * dc_hvstep) >> (2*FRACBITS));
+	    unsigned	px;
+	    if (hv >= dc_hdh) hv = dc_hdh-1;
+	    px = dc_hdsrc[hv*dc_hdw + dc_hu];
 	    unsigned	r=(px>>16)&0xff, g=(px>>8)&0xff, b=px&0xff;
 	    if (dim < 0.999)
 	    { r=(unsigned)(r*dim); g=(unsigned)(g*dim); b=(unsigned)(b*dim); }

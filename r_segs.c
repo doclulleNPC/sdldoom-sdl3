@@ -254,6 +254,7 @@ void R_RenderSegLoop (void)
     int			yh;
     int			mid;
     fixed_t		texturecolumn;
+    fixed_t		texturecolumn_f;	// full-precision (16.16) column for HD
     int			top;
     int			bottom;
 
@@ -306,8 +307,8 @@ void R_RenderSegLoop (void)
 	{
 	    // calculate texture offset
 	    angle = (rw_centerangle + xtoviewangle[rw_x])>>ANGLETOFINESHIFT;
-	    texturecolumn = rw_offset-FixedMul(finetangent[angle],rw_distance);
-	    texturecolumn >>= FRACBITS;
+	    texturecolumn_f = rw_offset-FixedMul(finetangent[angle],rw_distance);
+	    texturecolumn = texturecolumn_f >> FRACBITS;
 	    // calculate lighting
 	    index = rw_scale>>LIGHTSCALESHIFT;
 
@@ -327,7 +328,7 @@ void R_RenderSegLoop (void)
 	    dc_yh = yh;
 	    dc_texturemid = rw_midtexturemid;
 	    dc_source = R_GetColumn(midtexture,texturecolumn);
-	    R_HDSetupWall (midtexture, texturecolumn);
+	    R_HDSetupWall (midtexture, texturecolumn_f);
 	    colfunc ();
 	    dc_hdsrc = 0;
 	    ceilingclip[rw_x] = viewheight;
@@ -351,7 +352,7 @@ void R_RenderSegLoop (void)
 		    dc_yh = mid;
 		    dc_texturemid = rw_toptexturemid;
 		    dc_source = R_GetColumn(toptexture,texturecolumn);
-		    R_HDSetupWall (toptexture, texturecolumn);
+		    R_HDSetupWall (toptexture, texturecolumn_f);
 		    colfunc ();
 		    dc_hdsrc = 0;
 		    ceilingclip[rw_x] = mid;
@@ -383,7 +384,7 @@ void R_RenderSegLoop (void)
 		    dc_texturemid = rw_bottomtexturemid;
 		    dc_source = R_GetColumn(bottomtexture,
 					    texturecolumn);
-		    R_HDSetupWall (bottomtexture, texturecolumn);
+		    R_HDSetupWall (bottomtexture, texturecolumn_f);
 		    colfunc ();
 		    dc_hdsrc = 0;
 		    floorclip[rw_x] = mid;

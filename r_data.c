@@ -732,7 +732,7 @@ void R_InitData (void)
 extern int		truecolor;	// i_video.c
 extern int		mod_hdtextures;	// g_game.c / doomstat.h
 extern unsigned int*	dc_hdsrc;	// r_draw.c
-extern int		dc_hdw, dc_hdh, dc_hu, dc_texheight, dc_texhmask;
+extern int		dc_hdw, dc_hdh, dc_hu, dc_texheight, dc_texhmask, dc_hvstep;
 extern unsigned int*	ds_hdsrc;
 extern int		ds_hdw, ds_hdh, ds_hush, ds_hvsh;
 
@@ -744,12 +744,16 @@ static int R_ilog2 (int v)
 }
 
 // Set up the column drawer to sample an HD wall texture for `texnum` at the
-// original texture column `texcol` (cleared if no HD replacement / disabled).
-void R_HDSetupWall (int texnum, int texcol)
+// FULL-PRECISION (16.16) texture column `texcol` (cleared if no HD replacement
+// / disabled).  Sampling at sub-texel precision -- horizontally here via dc_hu,
+// vertically via dc_hvstep in R_DrawColumn -- is what makes walls actually HD;
+// the old integer-texel mapping capped them at vanilla resolution.
+void R_HDSetupWall (int texnum, fixed_t texcol)
 {
     hdimage_t*	hd;
     texture_t*	t;
-    int		texW, texH, c;
+    int		texW, texH;
+    long long	span, u;
 
     dc_hdsrc = 0;
     if (!truecolor || !mod_hdtextures || texnum <= 0)
@@ -762,15 +766,18 @@ void R_HDSetupWall (int texnum, int texcol)
     texH = t->height;
     if (texW < 1 || texH < 1)
 	return;
-    c = texcol % texW;
-    if (c < 0)
-	c += texW;
-    dc_hu = c * hd->w / texW;
+    // map the 16.16 texel column to an HD image column at full resolution
+    span = (long long)texW << FRACBITS;
+    u = (long long)texcol % span;
+    if (u < 0) u += span;
+    dc_hu = (int)((u * hd->w) / span);
     dc_hdsrc = hd->rgba;
     dc_hdw = hd->w;
     dc_hdh = hd->h;
     dc_texheight = texH;
     dc_texhmask = texH - 1;
+    // "HD rows per texel", 16.16: R_DrawColumn does fw*dc_hvstep>>32 for the row
+    dc_hvstep = (int)(((long long)hd->h << FRACBITS) / texH);
 }
 
 // Set up the span drawer to sample an HD flat (`flatnum` already translated).
