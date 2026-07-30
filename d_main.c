@@ -297,14 +297,20 @@ void D_Display (void)
     // (setblocks==11), so widescreen's full-height bar mode still shows the bar.
     if (gamestate == GS_LEVEL && gametic)
     {
-	extern int setblocks;
-	boolean st_minimal = (viewheight == SCREENHEIGHT)
-			     && !(widescreen && setblocks <= 10);
-	// widescreen bar overlays a full-height view that overwrites it every frame,
-	// so force a full bar redraw (background + widgets) each tic.
-	boolean ws_bar = widescreen && setblocks <= 10 && !st_minimal;
-	ST_Drawer (st_minimal, redrawsbar || ws_bar);
-	fullscreen = st_minimal;
+	extern int setblocks, statusbar_style;
+	// MOD: small / alt-HUD status-bar styles overlay a full-height view.
+	if (statusbar_style == 1)	{ ST_DrawScaled (); fullscreen = true; }
+	else if (statusbar_style == 2)	{ ST_DrawAltHUD (); fullscreen = true; }
+	else
+	{
+	    boolean st_minimal = (viewheight == SCREENHEIGHT)
+				 && !(widescreen && setblocks <= 10);
+	    // widescreen bar overlays a full-height view that overwrites it every
+	    // frame, so force a full bar redraw (background + widgets) each tic.
+	    boolean ws_bar = widescreen && setblocks <= 10 && !st_minimal;
+	    ST_Drawer (st_minimal, redrawsbar || ws_bar);
+	    fullscreen = st_minimal;
+	}
     }
 
     if (gamestate == GS_LEVEL && gametic)

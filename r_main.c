@@ -679,16 +679,19 @@ R_SetViewSize
 //
 void R_ExecuteSetViewSize (void)
 {
+    extern int	statusbar_style;	// st_stuff.c
     fixed_t	cosadj;
     fixed_t	dy;
     int		i;
     int		j;
     int		level;
-    int		startmap; 	
+    int		startmap;
 
     setsizeneeded = false;
 
-    if (setblocks == 11)
+    // MOD: the small / alt-HUD status-bar styles (statusbar_style != 0) overlay
+    // a full-height view, same as the full-screen size (setblocks==11).
+    if (setblocks == 11 || statusbar_style)
     {
 	scaledviewwidth = SCREENWIDTH;
 	scaledviewwidth_nonwide = NONWIDEWIDTH;

@@ -196,6 +196,7 @@ void M_Video(int choice);
 void M_VideoRes(int choice);
 void M_VideoAspect(int choice);
 void M_VideoFullscreen(int choice);
+void M_StatusBarStyle(int choice);
 void M_DrawVideo(void);
 
 void M_Keys(int choice);
@@ -398,6 +399,7 @@ enum
     vid_res,
     vid_aspect,
     vid_fullscreen,
+    vid_statusbar,
     vid_end
 } video_e;
 
@@ -405,7 +407,8 @@ menuitem_t VideoMenu[]=
 {
     {2,"",	M_VideoRes,'r'},	// left/right changes value
     {2,"",	M_VideoAspect,'a'},
-    {2,"",	M_VideoFullscreen,'f'}
+    {2,"",	M_VideoFullscreen,'f'},
+    {2,"",	M_StatusBarStyle,'s'}
 };
 
 menu_t  VideoDef =
@@ -961,6 +964,8 @@ void		I_SetFullscreen (int on);// i_video.c
 int		I_GetFullscreen (void);	// i_video.c
 
 static char* M_AspectNames[3] = { "4:3", "16:9", "16:10" };
+extern int   statusbar_style;	// st_stuff.c
+static char* M_StatusBarNames[3] = { "Vanilla", "Small (50%)", "Alt HUD" };
 
 void M_DrawVideo(void)
 {
@@ -977,6 +982,11 @@ void M_DrawVideo(void)
     M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_fullscreen, "Fullscreen");
     M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_fullscreen,
 		I_GetFullscreen() ? "On" : "Off");
+
+    M_WriteText(VideoDef.x, VideoDef.y + LINEHEIGHT*vid_statusbar, "Status Bar");
+    M_WriteText(VideoDef.x + 130, VideoDef.y + LINEHEIGHT*vid_statusbar,
+		M_StatusBarNames[(statusbar_style>=0 && statusbar_style<=2)
+				 ? statusbar_style : 0]);
 }
 
 void M_VideoRes(int choice)
@@ -1003,6 +1013,16 @@ void M_VideoAspect(int choice)
 void M_VideoFullscreen(int choice)
 {
     I_SetFullscreen(!I_GetFullscreen());
+    M_SaveDefaults();		// persist now, not just at quit
+}
+
+// MOD: cycle the status-bar style (0 vanilla / 1 small / 2 alt HUD).  The style
+// changes the view height (styles 1/2 use a full-height view), so recompute the
+// view size.
+void M_StatusBarStyle(int choice)
+{
+    statusbar_style = choice ? (statusbar_style+1)%3 : (statusbar_style+2)%3;
+    R_SetViewSize (screenblocks, detailLevel);
     M_SaveDefaults();		// persist now, not just at quit
 }
 

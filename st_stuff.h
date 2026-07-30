@@ -47,6 +47,13 @@ void ST_Ticker (void);
 // Called by main loop.
 void ST_Drawer (boolean fullscreen, boolean refresh);
 
+// MOD: status bar sizing (Options -> Video -> Status Bar).  statusbar_style:
+// 0 = vanilla full bar, 1 = small (50%), 2 = alt HUD.  Styles 1/2 draw over a
+// full-height 3D view instead of ST_Drawer.
+extern int statusbar_style;
+void ST_DrawScaled (void);	// style 1
+void ST_DrawAltHUD (void);	// style 2
+
 // Called when the console player is spawned on each level.
 void ST_Start (void);
 

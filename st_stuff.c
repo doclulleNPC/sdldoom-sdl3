@@ -1103,6 +1103,82 @@ void ST_doRefresh(void)
 
 }
 
+// --- MOD: status bar sizing (Options -> Video -> Status Bar), from aidoom ----
+// 0 = vanilla full bar, 1 = small (50% scaled, centred), 2 = alt HUD overlay.
+// Styles 1/2 render over a full-height 3D view (see R_ExecuteSetViewSize and
+// D_Display).
+int statusbar_style = 0;
+
+// Draw `num` as tall red digits from (x,y) in BASE coords; returns x past them.
+static int ST_TallNum (int x, int y, int num)
+{
+    int  w = ST_TALLNUMWIDTH;
+    char buf[12];
+    int  i, n;
+    if (num < 0) num = 0;
+    n = sprintf (buf, "%d", num);
+    for (i = 0; i < n; i++) { V_DrawPatch (x, y, FG, tallnum[buf[i]-'0']); x += w; }
+    return x;
+}
+
+// Small (50%): draw the full bar into screens[0], capture it, restore the view,
+// then blit it back downscaled to half size, centred along the bottom.
+void ST_DrawScaled (void)
+{
+    static byte* vsave = NULL; static int vcap  = 0;
+    static byte* bcap  = NULL; static int bccap = 0;
+    int hh    = ST_HEIGHT * hires;
+    int top   = SCREENHEIGHT - hh;
+    int bx    = ST_X * hires;
+    int bw    = ST_WIDTH * hires;
+    int strip = SCREENWIDTH * hh;
+    int dw, dh, dx, dy, x, y;
+
+    if (bx < 0) bx = 0;
+    if (bx + bw > SCREENWIDTH) bw = SCREENWIDTH - bx;
+    dw = bw/2; dh = hh/2;
+    dx = (SCREENWIDTH - dw)/2; dy = SCREENHEIGHT - dh;
+
+    if (vcap  < strip) { if (vsave) Z_Free(vsave); vsave = Z_Malloc(strip, PU_STATIC, 0); vcap  = strip; }
+    if (bccap < bw*hh) { if (bcap)  Z_Free(bcap);  bcap  = Z_Malloc(bw*hh, PU_STATIC, 0); bccap = bw*hh; }
+
+    memcpy (vsave, screens[0] + top*SCREENWIDTH, strip);	// 1) snapshot the view
+    ST_doPaletteStuff ();
+    ST_doRefresh ();						// 2) full bar -> screens[0]
+    for (y = 0; y < hh; y++)					// 3) capture the bar
+	memcpy (bcap + y*bw, screens[0] + (top+y)*SCREENWIDTH + bx, bw);
+    memcpy (screens[0] + top*SCREENWIDTH, vsave, strip);	// 4) put the view back
+    for (y = 0; y < dh; y++)					// 5) scale the bar -> 50%, centred
+    {
+	byte* d = screens[0] + (dy+y)*SCREENWIDTH + dx;
+	byte* s = bcap + (y*2)*bw;
+	for (x = 0; x < dw; x++) d[x] = s[x*2];
+    }
+}
+
+// Alt HUD: minimal overlay -- health bottom-left, ammo bottom-right.
+void ST_DrawAltHUD (void)
+{
+    player_t* plyr  = &players[consoleplayer];
+    int       wbase = SCREENWIDTH / hires;		// wide base width
+    int       w     = ST_TALLNUMWIDTH;
+    int       y     = BASE_HEIGHT - 1 - tallnum[0]->height;
+    int       xx;
+
+    ST_doPaletteStuff ();
+
+    xx = ST_TallNum (2, y, plyr->health);		// health, bottom-left
+    V_DrawPatch (xx, y, FG, tallpercent);
+
+    if (weaponinfo[plyr->readyweapon].ammo != am_noammo)	// ammo, bottom-right
+    {
+	int  ammo = plyr->ammo[weaponinfo[plyr->readyweapon].ammo];
+	char buf[12];
+	int  n = sprintf (buf, "%d", ammo < 0 ? 0 : ammo);
+	ST_TallNum (wbase - 2 - n*w, y, ammo);
+    }
+}
+
 void ST_diffDraw(void)
 {
     // update all widgets

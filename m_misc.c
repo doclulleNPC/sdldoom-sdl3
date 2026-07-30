@@ -220,6 +220,7 @@ extern	int	mod_fullcolor;
 extern	int	mod_hdsprites;
 extern	int	mod_hdtextures;
 extern	int	mod_voxels;
+extern	int	statusbar_style;	// st_stuff.c
 extern	int	boom_compat;
 
 
@@ -283,6 +284,7 @@ default_t	defaults[] =
     {"screen_resolution",&hires, 2},
     {"screen_aspect",&aspect, 2},
     {"fullscreen",&fullscreen_mode, 0},
+    {"statusbar_style",&statusbar_style, 0},	// 0=vanilla 1=small 2=alt HUD
 
     // MOD feature toggles (Options -> Mod).
     {"mod_jump",&mod_jump, 0},
