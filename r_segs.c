@@ -80,15 +80,15 @@ int		worldbottom;
 int		worldhigh;
 int		worldlow;
 
-fixed_t		pixhigh;
-fixed_t		pixlow;
+int64_t		pixhigh;	// [FG] 64-bit accumulator: long/tall-wall overflow
+int64_t		pixlow;
 fixed_t		pixhighstep;
 fixed_t		pixlowstep;
 
-fixed_t		topfrac;
+int64_t		topfrac;	// [FG] 64-bit accumulator
 fixed_t		topstep;
 
-fixed_t		bottomfrac;
+int64_t		bottomfrac;	// [FG] 64-bit accumulator
 fixed_t		bottomstep;
 
 
