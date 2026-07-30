@@ -176,14 +176,26 @@ R_RenderMaskedSegRange
 		dc_colormap = walllights[index];
 	    }
 			
-	    sprtopscreen = centeryfrac - FixedMul(dc_texturemid, spryscale);
-	    dc_iscale = 0xffffffffu / (unsigned)spryscale;
-	    
-	    // draw the texture
-	    col = (column_t *)( 
-		(byte *)R_GetColumn(texnum,maskedtexturecol[dc_x]) -3);
-			
-	    R_DrawMaskedColumn (col);
+	    // killough 3/2/98: this used to overflow (32-bit FixedMul) and
+	    // crash Doom on 2s masked mid-textures at extreme scale.  Compute
+	    // in int64 and skip columns whose texture maps fully off-screen.
+	    {
+		int64_t	t = ((int64_t)centeryfrac << FRACBITS)
+			  - (int64_t)dc_texturemid * spryscale;
+
+		if (t + (int64_t)textureheight[texnum] * spryscale >= 0
+		    && t <= ((int64_t)SCREENHEIGHT << (FRACBITS*2)))
+		{
+		    sprtopscreen = t >> FRACBITS;
+		    dc_iscale = 0xffffffffu / (unsigned)spryscale;
+
+		    // draw the texture
+		    col = (column_t *)(
+			(byte *)R_GetColumn(texnum,maskedtexturecol[dc_x]) -3);
+
+		    R_DrawMaskedColumn (col);
+		}
+	    }
 	    maskedtexturecol[dc_x] = MAXSHORT;
 	}
 	spryscale += rw_scalestep;

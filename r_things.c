@@ -370,12 +370,12 @@ short*		mfloorclip;
 short*		mceilingclip;
 
 fixed_t		spryscale;
-fixed_t		sprtopscreen;
+int64_t		sprtopscreen;	// [FG] 64-bit: 2s masked-texture overflow (killough 3/2/98)
 
 void R_DrawMaskedColumn (column_t* column)
 {
-    int		topscreen;
-    int 	bottomscreen;
+    int64_t	topscreen;	// [FG] 64-bit integer math
+    int64_t 	bottomscreen;
     fixed_t	basetexturemid;
 	
     basetexturemid = dc_texturemid;
@@ -384,8 +384,8 @@ void R_DrawMaskedColumn (column_t* column)
     {
 	// calculate unclipped screen coordinates
 	//  for post
-	topscreen = sprtopscreen + spryscale*column->topdelta;
-	bottomscreen = topscreen + spryscale*column->length;
+	topscreen = sprtopscreen + (int64_t)spryscale*column->topdelta;
+	bottomscreen = topscreen + (int64_t)spryscale*column->length;
 
 	dc_yl = (topscreen+FRACUNIT-1)>>FRACBITS;
 	dc_yh = (bottomscreen-1)>>FRACBITS;
